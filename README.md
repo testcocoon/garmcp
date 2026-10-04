@@ -47,6 +47,38 @@ Ou directement, si le paquet est déjà installé :
 garmcp
 ```
 
+### Mistral Vibe (CLI)
+
+Le CLI Vibe Code se configure via `config.toml` ([documentation MCP servers](https://docs.mistral.ai/vibe/code/cli/mcp-servers)).
+
+1. Installez le serveur localement :
+
+```bash
+git clone https://github.com/testcocoon/garmcp.git
+cd garmcp
+./start.sh   # crée .venv, installe les dépendances, démarre le serveur (Ctrl+C pour quitter)
+```
+
+2. Ouvrez votre configuration Vibe (`~/.vibe/config.toml` au niveau utilisateur, ou `./.vibe/config.toml` au niveau projet) et ajoutez :
+
+```toml
+[[mcp_servers]]
+name = "garmcp"
+transport = "stdio"
+command = "/chemin/absolu/vers/garmcp/.venv/bin/garmcp"
+env = { GARMIN_EMAIL = "vous@example.com", GARMIN_PASSWORD = "votre-mot-de-passe" }
+```
+
+> Alternativement, `command = "/chemin/absolu/vers/garmcp/start.sh"` fonctionne directement (le script crée le venv s'il n'existe pas encore).
+
+3. Démarrez (ou redémarrez) Vibe, puis vérifiez que le serveur est bien chargé :
+
+```
+/mcp garmcp
+```
+
+Les outils sont exposés sous la forme `garmcp_<outil>` (ex. `garmcp_garmin_login`, `garmcp_garmin_activities`). Le flux 2FA fonctionne dans la session : appelez `garmin_login`, Garmin envoie le code par email, puis transmettez-le avec `garmin_mfa_verify`.
+
 ### Claude Desktop / Claude Code
 
 ```json
