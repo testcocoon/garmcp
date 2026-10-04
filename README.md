@@ -29,6 +29,24 @@ Optionnel : répertoire de stockage des tokens OAuth (par défaut `~/.garmcp`) :
 export GARMCP_TOKEN_DIR="/chemin/vers/tokens"
 ```
 
+### Mode verbose (journalisation de débogage)
+
+Par défaut, garmcp est silencieux (niveau WARNING). Un mode verbose optionnel écrit des informations de débogage (appels d'outils, flux de connexion, 2FA, sauvegarde des tokens...) **sur stderr** ou **vers syslog**, selon la configuration :
+
+```bash
+export GARMCP_VERBOSE=1        # active le mode debug
+export GARMCP_LOG=syslog       # destination : "stderr" (défaut) ou "syslog"
+export GARMCP_LOG_LEVEL=DEBUG  # DEBUG, INFO, WARNING (défaut), ERROR
+```
+
+| Variable | Valeurs | Effet |
+|---|---|---|
+| `GARMCP_VERBOSE` | non vide | Force le niveau DEBUG (prioritaire sur `GARMCP_LOG_LEVEL`) |
+| `GARMCP_LOG` | `stderr` (défaut), `syslog` | Destination des logs ; syslog utilise `/dev/log` |
+| `GARMCP_LOG_LEVEL` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | Niveau de log si `GARMCP_VERBOSE` est vide |
+
+Les logs vont sur stderr, jamais sur stdout, afin de ne pas perturber le protocole MCP (stdio). Sous Mistral Vibe, ajoutez ces variables dans le bloc `env` du serveur MCP. Les valeurs invalides retombent silencieusement sur les défauts (`stderr`, `WARNING`).
+
 > Après la première connexion, les tokens OAuth sont sauvegardés localement : les appels suivants n'ont plus besoin de l'email/mot de passe et ne les stockent jamais sur disque.
 
 ## Utilisation

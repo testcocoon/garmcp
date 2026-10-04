@@ -13,6 +13,10 @@ from garminconnect import (
     GarminConnectTooManyRequestsError,
 )
 
+from .logging import get_logger
+
+logger = get_logger(__name__)
+
 TOKEN_DIR = Path(os.environ.get("GARMCP_TOKEN_DIR", Path.home() / ".garmcp"))
 TOKEN_STORE_FILENAME = "garmin_tokens.json"
 
@@ -70,6 +74,13 @@ def login(
         )
 
     store.ensure_dir()
+    if store.exists():
+        logger.debug("Tokens existants trouvés : %s", store.token_path)
+    else:
+        logger.debug(
+            "Aucun token, connexion avec identifiants (email=%s)",
+            email if email else "env GARMIN_EMAIL",
+        )
     client = Garmin(email, password, return_on_mfa=True)
     try:
         mfa_status, _ = client.login(str(store.token_path))
@@ -81,10 +92,12 @@ def login(
         raise GarminAuthError(f"Échec de connexion Garmin : {exc}") from exc
 
     if mfa_status == "needs_mfa":
+        logger.debug("Garmin exige un code 2FA, session mise en attente")
         session_id = uuid.uuid4().hex
         sessions[session_id] = client
         return session_id
 
+    logger.debug("Connexion Garmin réussie sans 2FA")
     return client
 
 
@@ -101,8 +114,10 @@ def login_mfa_step2(
     appels suivants.
     """
     store = token_store or TokenStore()
+    logger.debug("Vérification du code 2FA pour la session %s", session_id[:8])
     client = mfa_sessions.pop(session_id, None)
     if client is None:
+        logger.debug("Session MFA introuvable : %s", session_id)
         raise GarminAuthError(
             "Session MFA introuvable ou expirée. "
             "Relancez garmin_login pour recevoir un nouveau code."
@@ -127,6 +142,7 @@ def login_mfa_step2(
     except Exception as exc:
         raise GarminAuthError(f"Impossible de sauvegarder les tokens : {exc}") from exc
 
+    logger.debug("Code 2FA validé, tokens sauvegardés dans %s", store.token_path)
     return client
 
 
