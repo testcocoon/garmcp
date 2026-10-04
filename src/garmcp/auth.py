@@ -45,17 +45,22 @@ def login(
     email: str | None = None,
     password: str | None = None,
     token_store: TokenStore | None = None,
-) -> Garmin:
+    mfa_sessions: dict[str, Garmin] | None = None,
+) -> Garmin | str:
     """Se connecte au compte Garmin Connect.
 
     Utilise les tokens OAuth sauvegardés s'ils existent et sont valides ;
-    sinon se connecte avec email/mot de passe puis sauvegarde les tokens.
-    Les identifiants peuvent venir des arguments ou des variables
-    d'environnement GARMIN_EMAIL / GARMIN_PASSWORD.
+    sinon se connecte avec email/mot de passe.
+
+    Si Garmin exige un code 2FA (envoyé par email), la session est mise
+    en attente et un identifiant de session (str) est retourné : le code
+    reçu doit ensuite être soumis via login_mfa_step2.
+    Sinon, retourne le client connecté (tokens sauvegardés).
     """
     email = email or os.environ.get("GARMIN_EMAIL")
     password = password or os.environ.get("GARMIN_PASSWORD")
     store = token_store or TokenStore()
+    sessions = mfa_sessions if mfa_sessions is not None else {}
 
     if not store.exists() and (not email or not password):
         raise GarminAuthError(
@@ -65,7 +70,7 @@ def login(
         )
 
     store.ensure_dir()
-    client = Garmin(email, password)
+    client = Garmin(email, password, return_on_mfa=True)
     try:
         mfa_status, _ = client.login(str(store.token_path))
     except (
@@ -76,53 +81,11 @@ def login(
         raise GarminAuthError(f"Échec de connexion Garmin : {exc}") from exc
 
     if mfa_status == "needs_mfa":
-        raise GarminAuthError(
-            "Garmin exige une authentification à deux facteurs (MFA). "
-            "Utilisez garmin_login_mfa pour démarrer la connexion en deux étapes."
-        )
+        session_id = uuid.uuid4().hex
+        sessions[session_id] = client
+        return session_id
 
     return client
-
-
-def login_mfa_step1(
-    email: str | None = None,
-    password: str | None = None,
-    mfa_sessions: dict[str, Garmin] | None = None,
-) -> str:
-    """Étape 1 de la connexion MFA : soumet email/mot de passe.
-
-    Garmin réserve la session MFA sur l'instance du client (en mémoire du
-    processus serveur). Retourne un identifiant de session à transmettre
-    à l'étape 2 avec le code reçu (email/SMS).
-    """
-    email = email or os.environ.get("GARMIN_EMAIL")
-    password = password or os.environ.get("GARMIN_PASSWORD")
-    if not email or not password:
-        raise GarminAuthError(
-            "Email et mot de passe requis pour la connexion MFA "
-            "(arguments ou GARMIN_EMAIL/GARMIN_PASSWORD)."
-        )
-
-    client = Garmin(email, password, return_on_mfa=True)
-    try:
-        mfa_status, _ = client.login()
-    except (
-        GarminConnectAuthenticationError,
-        GarminConnectConnectionError,
-        GarminConnectTooManyRequestsError,
-    ) as exc:
-        raise GarminAuthError(f"Échec de connexion Garmin : {exc}") from exc
-
-    if mfa_status != "needs_mfa":
-        raise GarminAuthError(
-            "Réponse inattendue : ce compte n'exige pas de MFA. "
-            "Utilisez garmin_login classique."
-        )
-
-    session_id = uuid.uuid4().hex
-    sessions = mfa_sessions if mfa_sessions is not None else {}
-    sessions[session_id] = client
-    return session_id
 
 
 def login_mfa_step2(
@@ -142,7 +105,7 @@ def login_mfa_step2(
     if client is None:
         raise GarminAuthError(
             "Session MFA introuvable ou expirée. "
-            "Relancez garmin_login_mfa pour recevoir un nouveau code."
+            "Relancez garmin_login pour recevoir un nouveau code."
         )
 
     if not isinstance(mfa_code, str) or not mfa_code.strip():

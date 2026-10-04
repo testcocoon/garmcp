@@ -67,9 +67,8 @@ garmcp
 
 | Outil | Description |
 |---|---|
-| `garmin_login` | Se connecte au compte Garmin (email/mot de passe ou tokens) |
-| `garmin_login_mfa` | MFA étape 1 : soumet les identifiants, Garmin envoie un code |
-| `garmin_mfa_verify` | MFA étape 2 : vérifie le code et termine la connexion |
+| `garmin_login` | Se connecte au compte Garmin ; si la 2FA est active, Garmin envoie un code par email |
+| `garmin_mfa_verify` | Soumet le code 2FA reçu par email et termine la connexion |
 | `garmin_logout` | Se déconnecte et supprime les tokens locaux |
 | `garmin_status` | Vérifie l'état de la connexion |
 | `garmin_daily_summary` | Résumé quotidien (steps, calories, FC, stress...) |
@@ -85,14 +84,23 @@ garmcp
 
 La plupart des outils acceptent `days_ago` (0 = aujourd'hui).
 
-## Authentification à deux facteurs (MFA)
+## Authentification à deux facteurs (2FA)
 
-Si le compte Garmin est protégé par la MFA, la connexion se fait en deux étapes :
+Si le compte Garmin est protégé par la 2FA, la connexion se fait naturellement en deux étapes :
 
-1. `garmin_login_mfa(email, password)` — Garmin envoie un code à 6 chiffres (email/SMS). L'outil retourne un `session_id`.
-2. `garmin_mfa_verify(session_id, mfa_code)` — le code est vérifié, la connexion est établie et les tokens sont sauvegardés (les connexions suivantes n'exigeront plus la MFA).
+1. `garmin_login(email, password)` — Garmin envoie un code à 6 chiffres **par email**. L'outil retourne un `session_id` et vous invite à consulter votre boîte mail.
+2. `garmin_mfa_verify(session_id, mfa_code)` — le code reçu est vérifié, la connexion est établie et les tokens sont sauvegardés (les connexions suivantes n'exigeront plus la 2FA).
 
-La session MFA en attente vit en mémoire du serveur : si le code expire ou si le serveur redémarre, relancez `garmin_login_mfa`.
+Exemple de dialogue :
+
+```
+> garmin_login(email="vous@example.com", password="...")
+Code 2FA envoyé par email par Garmin. Session : a1b2c3d4...
+> garmin_mfa_verify(session_id="a1b2c3d4...", mfa_code="123456")
+Connecté au compte Garmin avec succès (MFA validée).
+```
+
+La session 2FA en attente vit en mémoire du serveur : si le code expire ou si le serveur redémarre, relancez `garmin_login`.
 
 ## Développement
 

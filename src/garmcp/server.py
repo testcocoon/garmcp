@@ -8,13 +8,7 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
-from .auth import (
-    GarminAuthError,
-    login,
-    login_mfa_step1,
-    login_mfa_step2,
-    logout,
-)
+from .auth import GarminAuthError, login, login_mfa_step2, logout
 from .client import GarminClient
 
 mcp = MCPServer(name="garmcp", description="Connecteur Garmin Connect")
@@ -54,8 +48,9 @@ def garmin_login(email: str | None = None, password: str | None = None) -> str:
     """Se connecte au compte Garmin Connect.
 
     Sans arguments, utilise GARMIN_EMAIL/GARMIN_PASSWORD ou les tokens
-    sauvegardés. Une fois connecté, les tokens sont stockés localement
-    pour les appels suivants.
+    sauvegardés. Si le compte est protégé par la 2FA, Garmin envoie un
+    code par email : l'outil retourne alors un session_id et le code
+    reçu doit être soumis via garmin_mfa_verify pour terminer la connexion.
 
     Args:
         email: Adresse email du compte Garmin (optionnel si env var définie).
@@ -63,7 +58,17 @@ def garmin_login(email: str | None = None, password: str | None = None) -> str:
     """
     global _client
     try:
-        client = GarminClient(login(email, password))
+        result = login(email, password, mfa_sessions=_mfa_sessions)
+    except GarminAuthError as exc:
+        return f"Échec de connexion : {exc}"
+    if isinstance(result, str):
+        return (
+            f"Code 2FA envoyé par email par Garmin. Session : {result}. "
+            "Consultez votre boîte mail et transmettez le code à 6 chiffres "
+            f"avec garmin_mfa_verify(session_id={result!r}, mfa_code=...)."
+        )
+    try:
+        client = GarminClient(result)
         client.get_summary(date.today().isoformat())
     except GarminAuthError as exc:
         return f"Échec de connexion : {exc}"
@@ -72,34 +77,12 @@ def garmin_login(email: str | None = None, password: str | None = None) -> str:
 
 
 @mcp.tool()
-def garmin_login_mfa(email: str | None = None, password: str | None = None) -> str:
-    """Étape 1 de la connexion avec authentification à deux facteurs (MFA).
-
-    Soumet email/mot de passe à Garmin ; un code à 6 chiffres est alors
-    envoyé (email ou SMS selon la configuration du compte). Retourne un
-    identifiant de session à transmettre à garmin_mfa_verify avec le code.
-
-    Args:
-        email: Adresse email du compte Garmin (optionnel si env var définie).
-        password: Mot de passe du compte Garmin (optionnel si env var définie).
-    """
-    try:
-        session_id = login_mfa_step1(email, password, _mfa_sessions)
-    except GarminAuthError as exc:
-        return f"Échec : {exc}"
-    return (
-        f"Code MFA envoyé par Garmin. Session : {session_id}. "
-        "Transmettez ce session_id et le code reçu à garmin_mfa_verify."
-    )
-
-
-@mcp.tool()
 def garmin_mfa_verify(session_id: str, mfa_code: str) -> str:
-    """Étape 2 de la connexion MFA : vérifie le code à 6 chiffres.
+    """Vérifie le code 2FA reçu par email après garmin_login.
 
     Args:
-        session_id: Identifiant retourné par garmin_login_mfa.
-        mfa_code: Code à 6 chiffres reçu par email/SMS.
+        session_id: Identifiant de session retourné par garmin_login.
+        mfa_code: Code à 6 chiffres reçu par email.
     """
     global _client
     try:
