@@ -77,3 +77,37 @@ def test_run_login_mfa_flow(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert "code à 6 chiffres" in captured.out
     assert "Token de connexion stocké" in captured.out
+
+
+def test_parser_http_options():
+    parser = garmcp_cli.build_parser()
+    args = parser.parse_args(["--http", "--port", "9000", "--host", "0.0.0.0"])
+    assert args.http is True
+    assert args.port == 9000
+    assert args.host == "0.0.0.0"
+
+
+def test_parser_http_defaults(monkeypatch):
+    monkeypatch.delenv("GARMCP_HOST", raising=False)
+    monkeypatch.delenv("GARMCP_PORT", raising=False)
+    parser = garmcp_cli.build_parser()
+    args = parser.parse_args([])
+    assert args.host == "127.0.0.1"
+    assert args.port == 8000
+
+
+def test_main_http_dispatch(monkeypatch):
+    called = {}
+
+    class FakeMCP:
+        def run(self, transport, **kwargs):
+            called["transport"] = transport
+            called.update(kwargs)
+
+    import garmcp.server as server_mod
+
+    monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    garmcp_cli.main(["--http", "--port", "8123"])
+    assert called["transport"] == "streamable-http"
+    assert called["port"] == 8123
+    assert called["streamable_http_path"] == "/mcp"

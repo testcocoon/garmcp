@@ -119,6 +119,30 @@ env = { GARMIN_EMAIL = "vous@example.com", GARMIN_PASSWORD = "votre-mot-de-passe
 
 Les outils sont exposés sous la forme `garmcp_<outil>` (ex. `garmcp_garmin_login`, `garmcp_garmin_activities`). Le flux 2FA fonctionne dans la session : appelez `garmin_login`, Garmin envoie le code par email, puis transmettez-le avec `garmin_mfa_verify`.
 
+### Mistral Chat / Vibe Work (connecteur personnalisé)
+
+Mistral Chat et Vibe Work peuvent se connecter à n'importe quel serveur MCP via un **connecteur personnalisé** ([documentation](https://docs.mistral.ai/vibe/work/connectors/mcp-connectors)). Le script `mistral.sh` démarre garmcp en serveur HTTP streamable et affiche l'URL à renseigner :
+
+```bash
+./mistral.sh
+```
+
+```
+=== Serveur MCP garmcp pour connecteur Mistral Chat ===
+URL du connecteur : http://127.0.0.1:8000/mcp
+```
+
+Dans Mistral Chat / Work : **Connecteurs > + Ajouter un connecteur > Connecteur MCP personnalisé**, puis renseignez l'URL affichée (`http://127.0.0.1:8000/mcp` par défaut).
+
+Configuration :
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `GARMCP_HOST` | `127.0.0.1` | Adresse d'écoute |
+| `GARMCP_PORT` | `8000` | Port d'écoute |
+
+> Le serveur écoute sur `127.0.0.1` par défaut (accès local uniquement). C'est Mistral Chat qui se connecte à cette URL : le serveur doit être joignable depuis votre machine/navigateur selon la façon dont le connecteur est enregistré.
+
 ### Claude Desktop / Claude Code
 
 ```json

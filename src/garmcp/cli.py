@@ -93,6 +93,22 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="connexion interactive (avec 2FA si requise) puis stockage du token, puis quitte",
     )
+    parser.add_argument(
+        "--http",
+        action="store_true",
+        help="démarre le serveur MCP en HTTP streamable (pour connecteur Mistral Chat)",
+    )
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("GARMCP_HOST", "127.0.0.1"),
+        help="adresse d'écoute HTTP (défaut : 127.0.0.1, ou GARMCP_HOST)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("GARMCP_PORT", "8000")),
+        help="port d'écoute HTTP (défaut : 8000, ou GARMCP_PORT)",
+    )
     return parser
 
 
@@ -100,6 +116,16 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.login:
         return run_login()
+    if args.http:
+        from .server import mcp
+
+        mcp.run(
+            "streamable-http",
+            host=args.host,
+            port=args.port,
+            streamable_http_path="/mcp",
+        )
+        return 0
     from .server import main as serve
 
     serve()
