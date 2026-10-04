@@ -1,8 +1,9 @@
-"""Authentification au compte Garmin Connect."""
+"""Authentification au compte Garmin Connect (avec support MFA)."""
 
 from __future__ import annotations
 
 import os
+import uuid
 from pathlib import Path
 
 from garminconnect import (
@@ -21,7 +22,7 @@ class GarminAuthError(Exception):
 
 
 class TokenStore:
-    """Emplacement de stockage local des tokens OAuth Garmin."""
+    """Stockage local des tokens OAuth Garmin."""
 
     def __init__(self, token_dir: Path | None = None) -> None:
         self.token_dir = Path(token_dir) if token_dir else TOKEN_DIR
@@ -32,6 +33,12 @@ class TokenStore:
 
     def ensure_dir(self) -> None:
         self.token_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _persist_tokens(client: Garmin, store: TokenStore) -> None:
+    """Sauvegarde les tokens OAuth via le client interne (perms 0600)."""
+    store.ensure_dir()
+    client.client.dump(str(store.token_path))
 
 
 def login(
@@ -68,12 +75,94 @@ def login(
     ) as exc:
         raise GarminAuthError(f"Échec de connexion Garmin : {exc}") from exc
 
-    if mfa_status:
+    if mfa_status == "needs_mfa":
         raise GarminAuthError(
-            "Garmin exige une authentification multi-facteurs (MFA), "
-            "non supportée par ce connecteur. Désactivez la MFA ou "
-            "utilisez un mot de passe dédié sans MFA."
+            "Garmin exige une authentification à deux facteurs (MFA). "
+            "Utilisez garmin_login_mfa pour démarrer la connexion en deux étapes."
         )
+
+    return client
+
+
+def login_mfa_step1(
+    email: str | None = None,
+    password: str | None = None,
+    mfa_sessions: dict[str, Garmin] | None = None,
+) -> str:
+    """Étape 1 de la connexion MFA : soumet email/mot de passe.
+
+    Garmin réserve la session MFA sur l'instance du client (en mémoire du
+    processus serveur). Retourne un identifiant de session à transmettre
+    à l'étape 2 avec le code reçu (email/SMS).
+    """
+    email = email or os.environ.get("GARMIN_EMAIL")
+    password = password or os.environ.get("GARMIN_PASSWORD")
+    if not email or not password:
+        raise GarminAuthError(
+            "Email et mot de passe requis pour la connexion MFA "
+            "(arguments ou GARMIN_EMAIL/GARMIN_PASSWORD)."
+        )
+
+    client = Garmin(email, password, return_on_mfa=True)
+    try:
+        mfa_status, _ = client.login()
+    except (
+        GarminConnectAuthenticationError,
+        GarminConnectConnectionError,
+        GarminConnectTooManyRequestsError,
+    ) as exc:
+        raise GarminAuthError(f"Échec de connexion Garmin : {exc}") from exc
+
+    if mfa_status != "needs_mfa":
+        raise GarminAuthError(
+            "Réponse inattendue : ce compte n'exige pas de MFA. "
+            "Utilisez garmin_login classique."
+        )
+
+    session_id = uuid.uuid4().hex
+    sessions = mfa_sessions if mfa_sessions is not None else {}
+    sessions[session_id] = client
+    return session_id
+
+
+def login_mfa_step2(
+    session_id: str,
+    mfa_code: str,
+    mfa_sessions: dict[str, Garmin],
+    token_store: TokenStore | None = None,
+) -> Garmin:
+    """Étape 2 de la connexion MFA : soumet le code à 6 chiffres.
+
+    Consomme la session MFA en attente correspondant à session_id,
+    complète la connexion et sauvegarde les tokens OAuth pour les
+    appels suivants.
+    """
+    store = token_store or TokenStore()
+    client = mfa_sessions.pop(session_id, None)
+    if client is None:
+        raise GarminAuthError(
+            "Session MFA introuvable ou expirée. "
+            "Relancez garmin_login_mfa pour recevoir un nouveau code."
+        )
+
+    if not isinstance(mfa_code, str) or not mfa_code.strip():
+        raise GarminAuthError("Le code MFA doit être une chaîne non vide.")
+
+    try:
+        client.resume_login(None, mfa_code.strip())
+    except (
+        GarminConnectAuthenticationError,
+        GarminConnectConnectionError,
+        GarminConnectTooManyRequestsError,
+    ) as exc:
+        raise GarminAuthError(f"Échec de la vérification du code MFA : {exc}") from exc
+    except Exception as exc:
+        raise GarminAuthError(f"Erreur pendant la connexion MFA : {exc}") from exc
+
+    try:
+        _persist_tokens(client, store)
+    except Exception as exc:
+        raise GarminAuthError(f"Impossible de sauvegarder les tokens : {exc}") from exc
 
     return client
 

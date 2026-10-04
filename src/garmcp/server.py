@@ -8,12 +8,22 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
-from .auth import GarminAuthError, login, logout
+from .auth import (
+    GarminAuthError,
+    login,
+    login_mfa_step1,
+    login_mfa_step2,
+    logout,
+)
 from .client import GarminClient
 
 mcp = MCPServer(name="garmcp", description="Connecteur Garmin Connect")
 
 _client: GarminClient | None = None
+
+# Sessions MFA en attente : étape 1 terminée, en attente du code.
+# L'état MFA vit sur l'instance Garmin (en mémoire du processus serveur).
+_mfa_sessions: dict[str, Any] = {}
 
 
 def get_client() -> GarminClient:
@@ -59,6 +69,47 @@ def garmin_login(email: str | None = None, password: str | None = None) -> str:
         return f"Échec de connexion : {exc}"
     _client = client
     return "Connecté au compte Garmin avec succès."
+
+
+@mcp.tool()
+def garmin_login_mfa(email: str | None = None, password: str | None = None) -> str:
+    """Étape 1 de la connexion avec authentification à deux facteurs (MFA).
+
+    Soumet email/mot de passe à Garmin ; un code à 6 chiffres est alors
+    envoyé (email ou SMS selon la configuration du compte). Retourne un
+    identifiant de session à transmettre à garmin_mfa_verify avec le code.
+
+    Args:
+        email: Adresse email du compte Garmin (optionnel si env var définie).
+        password: Mot de passe du compte Garmin (optionnel si env var définie).
+    """
+    try:
+        session_id = login_mfa_step1(email, password, _mfa_sessions)
+    except GarminAuthError as exc:
+        return f"Échec : {exc}"
+    return (
+        f"Code MFA envoyé par Garmin. Session : {session_id}. "
+        "Transmettez ce session_id et le code reçu à garmin_mfa_verify."
+    )
+
+
+@mcp.tool()
+def garmin_mfa_verify(session_id: str, mfa_code: str) -> str:
+    """Étape 2 de la connexion MFA : vérifie le code à 6 chiffres.
+
+    Args:
+        session_id: Identifiant retourné par garmin_login_mfa.
+        mfa_code: Code à 6 chiffres reçu par email/SMS.
+    """
+    global _client
+    try:
+        client = login_mfa_step2(session_id, mfa_code, _mfa_sessions)
+        wrapper = GarminClient(client)
+        wrapper.get_summary(date.today().isoformat())
+    except GarminAuthError as exc:
+        return f"Échec : {exc}"
+    _client = wrapper
+    return "Connecté au compte Garmin avec succès (MFA validée)."
 
 
 @mcp.tool()

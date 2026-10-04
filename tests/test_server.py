@@ -10,6 +10,8 @@ def test_tools_registered():
     names = {t.name for t in tools}
     expected = {
         "garmin_login",
+        "garmin_login_mfa",
+        "garmin_mfa_verify",
         "garmin_logout",
         "garmin_status",
         "garmin_daily_summary",

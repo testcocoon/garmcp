@@ -68,6 +68,8 @@ garmcp
 | Outil | Description |
 |---|---|
 | `garmin_login` | Se connecte au compte Garmin (email/mot de passe ou tokens) |
+| `garmin_login_mfa` | MFA étape 1 : soumet les identifiants, Garmin envoie un code |
+| `garmin_mfa_verify` | MFA étape 2 : vérifie le code et termine la connexion |
 | `garmin_logout` | Se déconnecte et supprime les tokens locaux |
 | `garmin_status` | Vérifie l'état de la connexion |
 | `garmin_daily_summary` | Résumé quotidien (steps, calories, FC, stress...) |
@@ -83,6 +85,15 @@ garmcp
 
 La plupart des outils acceptent `days_ago` (0 = aujourd'hui).
 
+## Authentification à deux facteurs (MFA)
+
+Si le compte Garmin est protégé par la MFA, la connexion se fait en deux étapes :
+
+1. `garmin_login_mfa(email, password)` — Garmin envoie un code à 6 chiffres (email/SMS). L'outil retourne un `session_id`.
+2. `garmin_mfa_verify(session_id, mfa_code)` — le code est vérifié, la connexion est établie et les tokens sont sauvegardés (les connexions suivantes n'exigeront plus la MFA).
+
+La session MFA en attente vit en mémoire du serveur : si le code expire ou si le serveur redémarre, relancez `garmin_login_mfa`.
+
 ## Développement
 
 ```bash
@@ -93,4 +104,4 @@ ruff check .
 
 ## Avertissement
 
-Ce projet utilise une bibliothèque non officielle pour Garmin Connect. L'authentification multi-facteurs (MFA) n'est pas supportée par ce connecteur. Utilisez un mot de passe dédié à ce service.
+Ce projet utilise une bibliothèque non officielle pour Garmin Connect. Utilisez un mot de passe dédié à ce service.
