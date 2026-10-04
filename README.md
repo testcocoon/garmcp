@@ -33,7 +33,15 @@ export GARMCP_TOKEN_DIR="/chemin/vers/tokens"
 
 ## Utilisation
 
-Lancement du serveur MCP (transport stdio) :
+Lancement du serveur MCP (transport stdio) via le script d'installation et de démarrage :
+
+```bash
+./start.sh
+```
+
+Le script crée un environnement virtuel `.venv`, installe `garmcp` et ses dépendances, puis démarre le serveur. Le répertoire du venv est personnalisable via `GARMCP_VENV`.
+
+Ou directement, si le paquet est déjà installé :
 
 ```bash
 garmcp
