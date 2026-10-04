@@ -17,7 +17,7 @@ dev = [
 ]
 
 [project.scripts]
-garmcp = "garmcp.server:main"
+garmcp = "garmcp.cli:main"
 
 [build-system]
 requires = ["hatchling"]

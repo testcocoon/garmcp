@@ -51,6 +51,26 @@ En mode debug, les **requêtes de connexion** émises par `garminconnect`/`garth
 
 > Après la première connexion, les tokens OAuth sont sauvegardés localement : les appels suivants n'ont plus besoin de l'email/mot de passe et ne les stockent jamais sur disque.
 
+## Connexion initiale avec `--login`
+
+Avant de démarrer le serveur, connectez-vous une fois en ligne de commande — le flux 2FA est interactif dans le terminal :
+
+```bash
+garmcp --login
+```
+
+```
+Email Garmin : vous@example.com
+Mot de passe Garmin : ********
+Connexion à Garmin Connect...
+Un code à 6 chiffres a été envoyé par email par Garmin.
+Code 2FA : 123456
+Token de connexion stocké : ~/.garmcp/garmin_tokens.json
+Les prochaines connexions utiliseront ce token sans 2FA.
+```
+
+Le token OAuth est stocké localement (permissions 0600) : les connexions suivantes — y compris celles du serveur MCP — l'utilisent automatiquement, sans redemander email, mot de passe ni code 2FA.
+
 ## Utilisation
 
 Lancement du serveur MCP (transport stdio) via le script d'installation et de démarrage :
