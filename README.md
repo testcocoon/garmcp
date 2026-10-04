@@ -47,6 +47,8 @@ export GARMCP_LOG_LEVEL=DEBUG  # DEBUG, INFO, WARNING (défaut), ERROR
 
 Les logs vont sur stderr, jamais sur stdout, afin de ne pas perturber le protocole MCP (stdio). Sous Mistral Vibe, ajoutez ces variables dans le bloc `env` du serveur MCP. Les valeurs invalides retombent silencieusement sur les défauts (`stderr`, `WARNING`).
 
+En mode debug, les **requêtes de connexion** émises par `garminconnect`/`garth` sont également journalisées intégralement : stratégie de login essayée (`mobile+cffi`, `portal+requests`...), chargement des tokens, erreurs HTTP (429, 401...). Les en-têtes et valeurs sensibles (`Authorization`, `Cookie`, `mfaVerificationCode`, jetons CSRF) sont **automatiquement rédigés** (`<REDACTÉ>`) : aucun secret ne peut fuiter dans les logs.
+
 > Après la première connexion, les tokens OAuth sont sauvegardés localement : les appels suivants n'ont plus besoin de l'email/mot de passe et ne les stockent jamais sur disque.
 
 ## Utilisation
