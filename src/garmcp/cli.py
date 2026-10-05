@@ -130,24 +130,34 @@ def main(argv: list[str] | None = None) -> int:
         return run_login()
     if args.http or args.sse:
         from .server import mcp
+        from .token_auth import get_token
 
         base = args.base_url.strip("/").strip()
         prefix = f"/{base}" if base else ""
         if args.http:
-            mcp.run(
-                "streamable-http",
-                host=args.host,
-                port=args.port,
-                streamable_http_path=f"{prefix}/mcp",
+            app = mcp.streamable_http_app(
+                streamable_http_path=f"{prefix}/mcp", host=args.host
             )
         else:
-            mcp.run(
-                "sse",
-                host=args.host,
-                port=args.port,
+            app = mcp.sse_app(
                 sse_path=f"{prefix}/sse",
                 message_path=f"{prefix}/messages/",
+                host=args.host,
             )
+
+        if get_token():
+            from .token_auth import TokenAuthMiddleware
+
+            app.add_middleware(TokenAuthMiddleware)
+            print(
+                "Authentification par token activée (GARMCP_TOKEN) : "
+                "en-tête Authorization: Bearer <token> requis.",
+                file=sys.stderr,
+            )
+
+        import uvicorn
+
+        uvicorn.run(app, host=args.host, port=args.port)
         return 0
     from .server import main as serve
 

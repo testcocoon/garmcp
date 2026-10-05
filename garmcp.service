@@ -34,6 +34,9 @@ RestartSec=5
 # Mode debug optionnel (logs stderr -> journalctl) :
 # Environment=GARMCP_VERBOSE=1
 
+# Authentification par token (recommande des que le serveur est proxifie) :
+# Environment=GARMCP_TOKEN=generer-avec: python -c "import secrets; print(secrets.token_urlsafe(32))"
+
 # Renforcement
 NoNewPrivileges=true
 PrivateTmp=true

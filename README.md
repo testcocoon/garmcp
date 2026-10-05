@@ -141,6 +141,15 @@ Configuration :
 | `GARMCP_HOST` | `127.0.0.1` | Adresse d'écoute |
 | `GARMCP_PORT` | `8000` | Port d'écoute |
 | `GARMCP_BASE_URL` | *(aucune)* | Préfixe de chemin de l'URL |
+| `GARMCP_TOKEN` | *(aucune)* | Active l'authentification Bearer (transports HTTP/SSE) |
+
+**Authentification par token** : définissez `GARMCP_TOKEN` pour exiger un en-tête `Authorization: Bearer <token>` sur toutes les requêtes HTTP/SSE (fortement recommandé dès que le serveur est exposé). Générez un token :
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Dans Mistral Chat, renseignez ce token dans le champ API key/token du connecteur personnalisé. Sans `GARMCP_TOKEN`, le serveur reste ouvert (usage local uniquement).
 
 **URL de base** : avec `GARMCP_BASE_URL=baseurl` (ou `garmcp --http --base-url baseurl`), le serveur répond sous `http://127.0.0.1:8000/baseurl/mcp` au lieu de `http://127.0.0.1:8000/mcp`. Utile pour héberger plusieurs connecteurs derrière le même hôte/port (ex. reverse proxy Apache2 : `https://garmcp.example.com/baseurl/mcp`). Le préfixe s'applique aussi au transport SSE (`/baseurl/sse` + `/baseurl/messages/`).
 

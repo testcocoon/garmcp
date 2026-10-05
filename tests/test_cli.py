@@ -99,18 +99,23 @@ def test_parser_http_defaults(monkeypatch):
 def test_main_http_dispatch(monkeypatch):
     called = {}
 
+    class FakeApp:
+        def add_middleware(self, mw):
+            called["middleware"] = mw
+
     class FakeMCP:
-        def run(self, transport, **kwargs):
-            called["transport"] = transport
+        def streamable_http_app(self, **kwargs):
             called.update(kwargs)
+            return FakeApp()
 
     import garmcp.server as server_mod
 
     monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    monkeypatch.setattr("uvicorn.run", lambda app, **kw: called.update(kw))
     garmcp_cli.main(["--http", "--port", "8123"])
-    assert called["transport"] == "streamable-http"
-    assert called["port"] == 8123
     assert called["streamable_http_path"] == "/mcp"
+    assert called["port"] == 8123
+    assert called["host"] == "127.0.0.1"
 
 
 def test_parser_sse_flag():
@@ -123,18 +128,23 @@ def test_parser_sse_flag():
 def test_main_sse_dispatch(monkeypatch):
     called = {}
 
+    class FakeApp:
+        def add_middleware(self, mw):
+            called["middleware"] = mw
+
     class FakeMCP:
-        def run(self, transport, **kwargs):
-            called["transport"] = transport
+        def sse_app(self, **kwargs):
             called.update(kwargs)
+            return FakeApp()
 
     import garmcp.server as server_mod
 
     monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    monkeypatch.setattr("uvicorn.run", lambda app, **kw: called.update(kw))
     garmcp_cli.main(["--sse", "--port", "9001"])
-    assert called["transport"] == "sse"
     assert called["sse_path"] == "/sse"
     assert called["message_path"] == "/messages/"
+    assert called["port"] == 9001
 
 
 def test_parser_base_url_default(monkeypatch):
@@ -154,14 +164,19 @@ def test_parser_base_url_from_env(monkeypatch):
 def test_main_http_base_url_prefix(monkeypatch):
     called = {}
 
+    class FakeApp:
+        def add_middleware(self, mw):
+            pass
+
     class FakeMCP:
-        def run(self, transport, **kwargs):
-            called["transport"] = transport
+        def streamable_http_app(self, **kwargs):
             called.update(kwargs)
+            return FakeApp()
 
     import garmcp.server as server_mod
 
     monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    monkeypatch.setattr("uvicorn.run", lambda app, **kw: None)
     garmcp_cli.main(["--http", "--base-url", "baseurl"])
     assert called["streamable_http_path"] == "/baseurl/mcp"
 
@@ -169,14 +184,19 @@ def test_main_http_base_url_prefix(monkeypatch):
 def test_main_sse_base_url_prefix(monkeypatch):
     called = {}
 
+    class FakeApp:
+        def add_middleware(self, mw):
+            pass
+
     class FakeMCP:
-        def run(self, transport, **kwargs):
-            called["transport"] = transport
+        def sse_app(self, **kwargs):
             called.update(kwargs)
+            return FakeApp()
 
     import garmcp.server as server_mod
 
     monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    monkeypatch.setattr("uvicorn.run", lambda app, **kw: None)
     garmcp_cli.main(["--sse", "--base-url", "/baseurl/"])
     assert called["sse_path"] == "/baseurl/sse"
     assert called["message_path"] == "/baseurl/messages/"
