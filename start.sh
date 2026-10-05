@@ -41,5 +41,5 @@ fi
 
 # 5. Démarrage du serveur MCP (transport stdio)
 echo "Démarrage du serveur MCP garmcp (stdio) ..."
-exec garmcp
-#exec garmcp --login
+#exec garmcp
+exec garmcp --login
