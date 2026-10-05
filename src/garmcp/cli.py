@@ -115,6 +115,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=int(os.environ.get("GARMCP_PORT", "8000")),
         help="port d'écoute HTTP (défaut : 8000, ou GARMCP_PORT)",
     )
+    parser.add_argument(
+        "--base-url",
+        default=os.environ.get("GARMCP_BASE_URL", ""),
+        help="préfixe de chemin pour l'URL du serveur HTTP "
+        "(ex. \"baseurl\" -> http://host:port/baseurl/mcp ; défaut : aucun)",
+    )
     return parser
 
 
@@ -122,26 +128,26 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.login:
         return run_login()
-    if args.http:
+    if args.http or args.sse:
         from .server import mcp
 
-        mcp.run(
-            "streamable-http",
-            host=args.host,
-            port=args.port,
-            streamable_http_path="/mcp",
-        )
-        return 0
-    if args.sse:
-        from .server import mcp
-
-        mcp.run(
-            "sse",
-            host=args.host,
-            port=args.port,
-            sse_path="/sse",
-            message_path="/messages/",
-        )
+        base = args.base_url.strip("/").strip()
+        prefix = f"/{base}" if base else ""
+        if args.http:
+            mcp.run(
+                "streamable-http",
+                host=args.host,
+                port=args.port,
+                streamable_http_path=f"{prefix}/mcp",
+            )
+        else:
+            mcp.run(
+                "sse",
+                host=args.host,
+                port=args.port,
+                sse_path=f"{prefix}/sse",
+                message_path=f"{prefix}/messages/",
+            )
         return 0
     from .server import main as serve
 
