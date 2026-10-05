@@ -145,6 +145,16 @@ def main(argv: list[str] | None = None) -> int:
                 host=args.host,
             )
 
+        scheme = "http"
+        if args.http:
+            url_path = f"{prefix}/mcp"
+        else:
+            url_path = f"{prefix}/sse"
+        print(
+            f"Serveur MCP garmcp démarré : {scheme}://{args.host}:{args.port}{url_path}",
+            file=sys.stderr,
+        )
+
         if get_token():
             from .token_auth import TokenAuthMiddleware
 
