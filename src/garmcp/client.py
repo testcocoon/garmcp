@@ -81,11 +81,19 @@ class GarminClient:
     PAGE_SIZE = 100
 
     def get_activities(self, limit: int = 10) -> list[dict[str, Any]]:
-        """Dernières activités (offset 0, au plus `limit`)."""
-        try:
-            return self._client.get_activities(0, max(1, min(limit, 100)))
-        except Exception as exc:
-            raise GarminAuthError(f"Erreur Garmin (activités) : {exc}") from exc
+        """Dernières activités (offset 0, au plus `limit`).
+
+        Si limit dépasse 100 (maximum d'une requête Garmin), pagine
+        automatiquement via get_all_activities.
+        """
+        if limit <= 0:
+            raise GarminAuthError("limit doit être un entier positif")
+        if limit <= self.PAGE_SIZE:
+            try:
+                return self._client.get_activities(0, limit)
+            except Exception as exc:
+                raise GarminAuthError(f"Erreur Garmin (activités) : {exc}") from exc
+        return self.get_all_activities(max_activities=limit)[:limit]
 
     def get_all_activities(self, max_activities: int | None = None) -> list[dict[str, Any]]:
         """Toutes les activités, en paginant par requêtes de 100.
