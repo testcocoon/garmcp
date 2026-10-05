@@ -61,3 +61,51 @@ def test_body_composition_range():
     data = client.get_body_composition("2025-09-28", "2025-10-05")
     assert data["startDate"] == "2025-09-28"
     assert data["endDate"] == "2025-10-05"
+
+
+class FakePaginatedGarmin:
+    """Simule 250 activités côté Garmin : pages de 100 max."""
+
+    def __init__(self):
+        self.total = 250
+        self.calls = []
+
+    def count_activities(self):
+        return self.total
+
+    def get_activities(self, start, limit):
+        self.calls.append((start, limit))
+        page = [{"activityId": i} for i in range(start, min(start + limit, self.total))]
+        return page
+
+
+def test_get_all_activities_paginates():
+    fake = FakePaginatedGarmin()
+    client = GarminClient(fake)
+    activities = client.get_all_activities()
+    assert len(activities) == 250
+    # pages demandees : start=0, 100, 200 (3 requetes de 100)
+    assert fake.calls == [(0, 100), (100, 100), (200, 100)]
+
+
+def test_get_all_activities_with_max():
+    fake = FakePaginatedGarmin()
+    client = GarminClient(fake)
+    activities = client.get_all_activities(max_activities=150)
+    assert len(activities) == 150
+    assert fake.calls == [(0, 100), (100, 100)]
+
+
+def test_get_all_activities_stops_on_short_page():
+    class ShortFake:
+        def count_activities(self):
+            return 500  # compte annonce plus grand que la realite
+
+        def get_activities(self, start, limit):
+            if start == 0:
+                return [{"id": 1}]  # page incomplete -> arret anticipe
+            return []
+
+    client = GarminClient(ShortFake())
+    activities = client.get_all_activities()
+    assert len(activities) == 1

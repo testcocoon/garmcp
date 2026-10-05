@@ -78,11 +78,49 @@ class GarminClient:
     def get_stress(self, day: str, cache: bool = False) -> dict[str, Any]:
         return self._get_by_date("stress", self._client.get_stress_data, day, cache)
 
+    PAGE_SIZE = 100
+
     def get_activities(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Dernières activités (offset 0, au plus `limit`)."""
         try:
             return self._client.get_activities(0, max(1, min(limit, 100)))
         except Exception as exc:
             raise GarminAuthError(f"Erreur Garmin (activités) : {exc}") from exc
+
+    def get_all_activities(self, max_activities: int | None = None) -> list[dict[str, Any]]:
+        """Toutes les activités, en paginant par requêtes de 100.
+
+        Interroge /activitylist-service/activities/search/activities
+        avec start=0, 100, 200, ... et limit=100 jusqu'à épuiser le
+        compte total d'activités du compte (count_activities).
+
+        Args:
+            max_activities: Arrêter après ce nombre d'activités
+                (None = télécharger tout l'historique).
+        """
+        try:
+            total = self._client.count_activities()
+        except Exception as exc:
+            raise GarminAuthError(f"Erreur Garmin (compte d'activités) : {exc}") from exc
+        if max_activities is not None:
+            total = min(total, max(0, max_activities))
+
+        activities: list[dict[str, Any]] = []
+        start = 0
+        while start < total:
+            try:
+                page = self._client.get_activities(start, self.PAGE_SIZE)
+            except Exception as exc:
+                raise GarminAuthError(
+                    f"Erreur Garmin (activités, offset {start}) : {exc}"
+                ) from exc
+            if not page:
+                break
+            activities.extend(page)
+            if len(page) < self.PAGE_SIZE:
+                break
+            start += self.PAGE_SIZE
+        return activities[:total] if max_activities is not None else activities
 
     def get_activity(self, activity_id: str | int) -> dict[str, Any]:
         try:
