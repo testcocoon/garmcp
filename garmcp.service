@@ -1,0 +1,44 @@
+# Exemple de service systemd pour garmcp derrière Apache2.
+#
+# Installation :
+#   sudo cp garmcp.service /etc/systemd/system/garmcp.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now garmcp
+#
+# Le service écoute sur 127.0.0.1:8000 ; Apache2 (garmcp-apache.conf)
+# proxifie https://garmcp.example.com vers ce service.
+
+[Unit]
+Description=Serveur MCP garmcp (Garmin Connect)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=garmcp
+Group=garmcp
+# Repertoire du clone garmcp
+WorkingDirectory=/opt/garmcp
+# Venv cree par start.sh ; transport streamable-http en local uniquement
+ExecStart=/opt/garmcp/.venv/bin/garmcp --http --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+
+# Identifiants Garmin : preferer un login prealable (garmcp --login) qui
+# stocke le token ; sinon definir ici :
+# Environment=GARMIN_EMAIL=vous@example.com
+# Environment=GARMIN_PASSWORD=mot-de-passe
+# Fichier EnvironmentFile recommande :
+# EnvironmentFile=/etc/garmcp/garmcp.env
+
+# Mode debug optionnel (logs stderr -> journalctl) :
+# Environment=GARMCP_VERBOSE=1
+
+# Renforcement
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/garmcp/.garmcp
+
+[Install]
+WantedBy=multi-user.target

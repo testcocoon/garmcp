@@ -99,6 +99,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="démarre le serveur MCP en HTTP streamable (pour connecteur Mistral Chat)",
     )
     parser.add_argument(
+        "--sse",
+        action="store_true",
+        help="démarre le serveur MCP en SSE (ancien transport, si le connecteur "
+        "Mistral Chat ne supporte pas streamable-http)",
+    )
+    parser.add_argument(
         "--host",
         default=os.environ.get("GARMCP_HOST", "127.0.0.1"),
         help="adresse d'écoute HTTP (défaut : 127.0.0.1, ou GARMCP_HOST)",
@@ -124,6 +130,17 @@ def main(argv: list[str] | None = None) -> int:
             host=args.host,
             port=args.port,
             streamable_http_path="/mcp",
+        )
+        return 0
+    if args.sse:
+        from .server import mcp
+
+        mcp.run(
+            "sse",
+            host=args.host,
+            port=args.port,
+            sse_path="/sse",
+            message_path="/messages/",
         )
         return 0
     from .server import main as serve

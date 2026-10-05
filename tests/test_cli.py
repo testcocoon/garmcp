@@ -111,3 +111,27 @@ def test_main_http_dispatch(monkeypatch):
     assert called["transport"] == "streamable-http"
     assert called["port"] == 8123
     assert called["streamable_http_path"] == "/mcp"
+
+
+def test_parser_sse_flag():
+    parser = garmcp_cli.build_parser()
+    args = parser.parse_args(["--sse", "--port", "9001"])
+    assert args.sse is True
+    assert args.port == 9001
+
+
+def test_main_sse_dispatch(monkeypatch):
+    called = {}
+
+    class FakeMCP:
+        def run(self, transport, **kwargs):
+            called["transport"] = transport
+            called.update(kwargs)
+
+    import garmcp.server as server_mod
+
+    monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    garmcp_cli.main(["--sse", "--port", "9001"])
+    assert called["transport"] == "sse"
+    assert called["sse_path"] == "/sse"
+    assert called["message_path"] == "/messages/"
