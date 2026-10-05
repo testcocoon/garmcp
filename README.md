@@ -255,6 +255,9 @@ Connecteurs > **+ Ajouter un connecteur** > **Connecteur MCP personnalisé** :
 | `garmin_stress` | Données de stress |
 | `garmin_weight` | Mesures de poids |
 | `garmin_devices` | Appareils enregistrés |
+| `garmin_scheduled_workouts` | Entraînements planifiés d'un mois (calendrier) |
+| `garmin_next_scheduled_workout` | Prochain entraînement planifié |
+| `garmin_scheduled_workout` | Détails d'un entraînement planifié par ID |
 
 La plupart des outils acceptent `days_ago` (0 = aujourd'hui).
 

@@ -229,6 +229,43 @@ def garmin_devices() -> str:
     """Liste les appareils Garmin enregistrés sur le compte."""
     return _json(get_client().get_devices())
 
+@mcp.tool()
+def garmin_scheduled_workouts(year: int, month: int) -> str:
+    """Liste les entraînements planifiés pour un mois donné.
+
+    Interroge le calendrier d'entraînement Garmin Connect et retourne
+    les séances planifiées (type workout) du mois demandé.
+
+    Args:
+        year: Année (ex. 2025).
+        month: Mois de 1 à 12.
+    """
+    logger.debug("garmin_scheduled_workouts appelé (%s/%s)", month, year)
+    return _json(get_client().get_scheduled_workouts(year, month))
+
+
+@mcp.tool()
+def garmin_next_scheduled_workout() -> str:
+    """Retourne le prochain entraînement planifié (aujourd'hui ou plus tard).
+
+    Vérifie le mois courant puis le suivant ; retourne {} si aucune
+    séance n'est planifiée.
+    """
+    logger.debug("garmin_next_scheduled_workout appelé")
+    return _json(get_client().get_next_scheduled_workout())
+
+
+@mcp.tool()
+def garmin_scheduled_workout(workout_id: str) -> str:
+    """Détails d'un entraînement planifié par son identifiant.
+
+    Args:
+        workout_id: Identifiant de l'entraînement planifié (issu de
+            garmin_scheduled_workouts ou garmin_next_scheduled_workout).
+    """
+    logger.debug("garmin_scheduled_workout appelé (id=%s)", workout_id)
+    return _json(get_client().get_scheduled_workout_by_id(workout_id))
+
 
 def main() -> None:
     logger.debug("Démarrage du serveur MCP garmcp (log=%s)", os.environ.get("GARMCP_LOG", "stderr"))
