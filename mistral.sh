@@ -19,6 +19,7 @@ VENV_DIR="${GARMCP_VENV:-$SCRIPT_DIR/.venv}"
 [ ! -e $SCRIPT_DIR/garmin_user.env ] || source $SCRIPT_DIR/garmin_user.env 
 HOST="${GARMCP_HOST:-127.0.0.1}"
 PORT="${GARMCP_PORT:-8000}"
+BASE_URL="${GARMCP_BASE_URL:-}"
 
 command -v python3 >/dev/null 2>&1 || {
     echo "Erreur : python3 n'est pas installé." >&2
@@ -46,10 +47,13 @@ fi
 
 # 3. Démarre le serveur HTTP streamable (premier plan)
 echo ""
+BASE_PREFIX="/${BASE_URL#/}"  # normalise: "" -> "/", "baseurl" -> "/baseurl"
+URL_PATH="${BASE_PREFIX%/}/mcp"
+
 echo "=== Serveur MCP garmcp pour connecteur Mistral Chat ==="
-echo "URL du connecteur : http://$HOST:$PORT/mcp"
+echo "URL du connecteur : http://$HOST:$PORT$URL_PATH"
 echo "Dans Mistral Chat / Work : Connecteurs > + Ajouter un connecteur >"
 echo "Connecteur MCP personnalisé, et renseignez l'URL ci-dessus."
 echo "Arrêtez avec Ctrl+C."
 echo ""
-exec garmcp --http --host "$HOST" --port "$PORT"
+exec garmcp --http --host "$HOST" --port "$PORT" ${BASE_URL:+--base-url "$BASE_URL"}

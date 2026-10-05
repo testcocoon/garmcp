@@ -135,3 +135,48 @@ def test_main_sse_dispatch(monkeypatch):
     assert called["transport"] == "sse"
     assert called["sse_path"] == "/sse"
     assert called["message_path"] == "/messages/"
+
+
+def test_parser_base_url_default(monkeypatch):
+    monkeypatch.delenv("GARMCP_BASE_URL", raising=False)
+    parser = garmcp_cli.build_parser()
+    args = parser.parse_args(["--http"])
+    assert args.base_url == ""
+
+
+def test_parser_base_url_from_env(monkeypatch):
+    monkeypatch.setenv("GARMCP_BASE_URL", "baseurl")
+    parser = garmcp_cli.build_parser()
+    args = parser.parse_args(["--http"])
+    assert args.base_url == "baseurl"
+
+
+def test_main_http_base_url_prefix(monkeypatch):
+    called = {}
+
+    class FakeMCP:
+        def run(self, transport, **kwargs):
+            called["transport"] = transport
+            called.update(kwargs)
+
+    import garmcp.server as server_mod
+
+    monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    garmcp_cli.main(["--http", "--base-url", "baseurl"])
+    assert called["streamable_http_path"] == "/baseurl/mcp"
+
+
+def test_main_sse_base_url_prefix(monkeypatch):
+    called = {}
+
+    class FakeMCP:
+        def run(self, transport, **kwargs):
+            called["transport"] = transport
+            called.update(kwargs)
+
+    import garmcp.server as server_mod
+
+    monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    garmcp_cli.main(["--sse", "--base-url", "/baseurl/"])
+    assert called["sse_path"] == "/baseurl/sse"
+    assert called["message_path"] == "/baseurl/messages/"

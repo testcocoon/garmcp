@@ -140,6 +140,9 @@ Configuration :
 |---|---|---|
 | `GARMCP_HOST` | `127.0.0.1` | Adresse d'écoute |
 | `GARMCP_PORT` | `8000` | Port d'écoute |
+| `GARMCP_BASE_URL` | *(aucune)* | Préfixe de chemin de l'URL |
+
+**URL de base** : avec `GARMCP_BASE_URL=baseurl` (ou `garmcp --http --base-url baseurl`), le serveur répond sous `http://127.0.0.1:8000/baseurl/mcp` au lieu de `http://127.0.0.1:8000/mcp`. Utile pour héberger plusieurs connecteurs derrière le même hôte/port (ex. reverse proxy Apache2 : `https://garmcp.example.com/baseurl/mcp`). Le préfixe s'applique aussi au transport SSE (`/baseurl/sse` + `/baseurl/messages/`).
 
 > **Si Mistral Chat refuse un `http://localhost`/`127.0.0.1`** : les connecteurs personnalisés exigent généralement une URL **publique en HTTPS**. Utilisez le reverse proxy Apache2 ci-dessous. Si le connecteur ne supporte pas `streamable-http`, le serveur gère aussi l'ancien transport SSE (`garmcp --sse` : `/sse` + `/messages/`), également proxyfié par la configuration Apache2.
 
@@ -179,6 +182,7 @@ Connecteurs > **+ Ajouter un connecteur** > **Connecteur MCP personnalisé** :
 
 - URL : `https://garmcp.example.com/mcp` (transport streamable-http, recommandé)
 - Si le connecteur utilise l'ancien transport SSE : `https://garmcp.example.com/sse`
+- Avec une URL de base (`GARMCP_BASE_URL`) : `https://garmcp.example.com/baseurl/mcp` (adapter le `<Location>` Apache en conséquence : `ProxyPass /baseurl/mcp http://127.0.0.1:8000/baseurl/mcp`)
 
 ### Points importants de la configuration Apache2
 
