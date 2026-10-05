@@ -23,6 +23,9 @@ def test_tools_registered():
         "garmin_stress",
         "garmin_weight",
         "garmin_devices",
+        "garmin_scheduled_workouts",
+        "garmin_next_scheduled_workout",
+        "garmin_scheduled_workout",
     }
     assert expected.issubset(names)
 

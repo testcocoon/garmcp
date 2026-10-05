@@ -219,15 +219,74 @@ def garmin_stress(days_ago: int = 0) -> str:
 
 
 @mcp.tool()
-def garmin_weight() -> str:
-    """Dernières mesures de poids."""
-    return _json(get_client().get_body_weight())
+def garmin_weight(days_ago: int = 0) -> str:
+    """Dernière mesure de poids (et composition corporelle) pour une journée.
+
+    Retourne le poids, l'IMC, la masse grasse/musculaire et la date de
+    la dernière mesure du jour demandé.
+
+    Args:
+        days_ago: Nombre de jours en arrière (0 = aujourd'hui).
+    """
+    logger.debug("garmin_weight appelé (days_ago=%s)", days_ago)
+    return _json(get_client().get_body_weight_for_day(_days_ago(days_ago)))
+
+
+@mcp.tool()
+def garmin_weight_history(days: int = 7) -> str:
+    """Historique du poids sur plusieurs jours.
+
+    Args:
+        days: Nombre de jours d'historique (défaut : 7, max 365).
+    """
+    days = max(1, min(days, 365))
+    logger.debug("garmin_weight_history appelé (days=%s)", days)
+    start = _days_ago(days)
+    end = _days_ago(0)
+    return _json(get_client().get_body_composition(start, end))
 
 
 @mcp.tool()
 def garmin_devices() -> str:
     """Liste les appareils Garmin enregistrés sur le compte."""
     return _json(get_client().get_devices())
+
+@mcp.tool()
+def garmin_scheduled_workouts(year: int, month: int) -> str:
+    """Liste les entraînements planifiés pour un mois donné.
+
+    Interroge le calendrier d'entraînement Garmin Connect et retourne
+    les séances planifiées (type workout) du mois demandé.
+
+    Args:
+        year: Année (ex. 2025).
+        month: Mois de 1 à 12.
+    """
+    logger.debug("garmin_scheduled_workouts appelé (%s/%s)", month, year)
+    return _json(get_client().get_scheduled_workouts(year, month))
+
+
+@mcp.tool()
+def garmin_next_scheduled_workout() -> str:
+    """Retourne le prochain entraînement planifié (aujourd'hui ou plus tard).
+
+    Vérifie le mois courant puis le suivant ; retourne {} si aucune
+    séance n'est planifiée.
+    """
+    logger.debug("garmin_next_scheduled_workout appelé")
+    return _json(get_client().get_next_scheduled_workout())
+
+
+@mcp.tool()
+def garmin_scheduled_workout(workout_id: str) -> str:
+    """Détails d'un entraînement planifié par son identifiant.
+
+    Args:
+        workout_id: Identifiant de l'entraînement planifié (issu de
+            garmin_scheduled_workouts ou garmin_next_scheduled_workout).
+    """
+    logger.debug("garmin_scheduled_workout appelé (id=%s)", workout_id)
+    return _json(get_client().get_scheduled_workout_by_id(workout_id))
 
 
 def main() -> None:
