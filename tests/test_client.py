@@ -114,7 +114,7 @@ def test_get_all_activities_stops_on_short_page():
 def test_get_activities_delegates_over_100():
     fake = FakePaginatedGarmin()
     client = GarminClient(fake)
-    activities = client.get_activities(150)
+    activities = client.get_activities(limit=150)
     assert len(activities) == 150
     # delegation vers la pagination : requetes start=0 puis 100
     assert fake.calls == [(0, 100), (100, 100)]
@@ -131,7 +131,7 @@ def test_get_activities_single_page_under_100():
 
     fake = SingleFake()
     client = GarminClient(fake)
-    activities = client.get_activities(50)
+    activities = client.get_activities(limit=50)
     assert len(activities) == 50
     assert fake.calls == [(0, 50)]  # une seule requete, pas de count
 
@@ -141,4 +141,28 @@ def test_get_activities_invalid_limit():
     import pytest
 
     with pytest.raises(GarminAuthError):
-        client.get_activities(0)
+        client.get_activities(limit=0)
+
+
+def test_get_activities_with_start_offset():
+    fake = FakePaginatedGarmin()
+    client = GarminClient(fake)
+    activities = client.get_activities(start=120, limit=10)
+    assert activities == [{"activityId": i} for i in range(120, 130)]
+    assert fake.calls == [(120, 10)]  # une seule requete avec le start demande
+
+
+def test_get_activities_with_start_paginates():
+    fake = FakePaginatedGarmin()
+    client = GarminClient(fake)
+    activities = client.get_activities(start=120, limit=150)
+    assert len(activities) == 130  # il reste 130 activites a partir de l'offset 120
+    assert fake.calls == [(120, 100), (220, 100)]
+
+
+def test_get_activities_invalid_start():
+    client = GarminClient(FakePaginatedGarmin())
+    import pytest
+
+    with pytest.raises(GarminAuthError):
+        client.get_activities(start=-1)
