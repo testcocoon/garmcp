@@ -1,0 +1,24 @@
+{
+  "_commentaire": [
+    "EXEMPLE de fichier garmin_tokens.json — les valeurs ci-dessous sont",
+    "FICTIVES et ne correspondent à aucun compte. Ce fichier est généré",
+    "automatiquement par garmcp lors d'un login réussi (garmcp --login ou",
+    "l'outil MCP garmin_login/garmin_mfa_verify) et stocké par défaut dans",
+    "~/.garmcp/garmin_tokens.json avec les permissions 0600.",
+    "",
+    "Rôle de chaque champ :",
+    "  di_token         : jeton d'accès Bearer utilisé pour appeler l'API",
+    "                     Garmin Connect (courte durée, rafraîchi automatiquement).",
+    "  di_refresh_token : jeton de rafraîchissement longue durée ; c'est lui",
+    "                     qui permet de se reconnecter sans email, mot de passe",
+    "                     ni code 2FA. NE JAMAIS PARTAGER.",
+    "  di_client_id     : identifiant du client OAuth Garmin associé aux jetons.",
+    "",
+    "NE COPIEZ PAS CE FICHIER MANUELLEMENT : lancez `garmcp --login` pour",
+    "générer un vrai fichier valide. Ce fichier ne sert que de référence",
+    "de format."
+  ],
+  "di_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjIwMjQtMTAtMDQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJleGFtcGxlIiwiYXVkIjoiY2xpZW50X2lkX2V4YW1wbGUiLCJpc3MiOiJleGFtcGxlLmNhcnRtaW5pbnRlZ3JhdGlvbi5jb20iLCJleHAiOjE3MjgwMDAwMDB9.c2lnbmF0dXJlX2V4YW1wbGU",
+  "di_refresh_token": "RT-EXEMPLE-4f8a2b1c9d3e7f6a5b0c8d2e1f4a7b9c3d6e5f8a2b1c4d7e9f0a3b6c5d8e1f4",
+  "di_client_id": "garmin-connect-example-client-id"
+}

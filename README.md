@@ -51,6 +51,24 @@ En mode debug, les **requêtes de connexion** émises par `garminconnect`/`garth
 
 > Après la première connexion, les tokens OAuth sont sauvegardés localement : les appels suivants n'ont plus besoin de l'email/mot de passe et ne les stockent jamais sur disque.
 
+### Format du fichier de tokens
+
+Les tokens sont stockés dans `~/.garmcp/garmin_tokens.json` (permissions 0600, répertoire 0700). Un exemple de format est disponible dans [`examples/garmin_tokens.example.json`](examples/garmin_tokens.example.json) :
+
+```json
+{
+  "di_token": "eyJhbGciOi...",
+  "di_refresh_token": "RT-...",
+  "di_client_id": "garmin-connect-..."
+}
+```
+
+- `di_token` : jeton d'accès Bearer pour l'API Garmin Connect (courte durée, rafraîchi automatiquement via le refresh token)
+- `di_refresh_token` : jeton de rafraîchissement longue durée — c'est lui qui évite de redemander email/mot de passe/2FA. **Ne jamais le partager ni le committer**
+- `di_client_id` : identifiant du client OAuth associé
+
+> Ce fichier est généré automatiquement par `garmcp --login` (ou les outils MCP `garmin_login` / `garmin_mfa_verify`). N'écrivez pas ce fichier à la main : l'exemple ne sert que de référence de format.
+
 ## Connexion initiale avec `--login`
 
 Avant de démarrer le serveur, connectez-vous une fois en ligne de commande — le flux 2FA est interactif dans le terminal :
