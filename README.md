@@ -64,6 +64,7 @@ garmcp
 | `garmin_status` | Vérifie l'état de la connexion |
 | `garmin_daily_summary` | Résumé quotidien (steps, calories, FC, stress...) |
 | `garmin_activities` | Dernières activités |
+| `garmin_activities_between` | Activités complètes entre deux dates (incluses), index de début/fin déterminés par dichotomie |
 | `garmin_activity` | Détails d'une activité par ID |
 | `garmin_sleep` | Données de sommeil |
 | `garmin_steps` | Nombre de pas et objectif |

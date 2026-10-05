@@ -14,6 +14,7 @@ def test_tools_registered():
         "garmin_status",
         "garmin_daily_summary",
         "garmin_activities",
+        "garmin_activities_between",
         "garmin_activity",
         "garmin_sleep",
         "garmin_steps",
