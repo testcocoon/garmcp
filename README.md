@@ -253,7 +253,8 @@ Connecteurs > **+ Ajouter un connecteur** > **Connecteur MCP personnalisé** :
 | `garmin_heart_rate` | Fréquence cardiaque |
 | `garmin_body_battery` | Batterie corporelle |
 | `garmin_stress` | Données de stress |
-| `garmin_weight` | Mesures de poids |
+| `garmin_weight` | Poids et composition corporelle d'une journée (days_ago) |
+| `garmin_weight_history` | Historique du poids sur plusieurs jours (défaut 7) |
 | `garmin_devices` | Appareils enregistrés |
 | `garmin_scheduled_workouts` | Entraînements planifiés d'un mois (calendrier) |
 | `garmin_next_scheduled_workout` | Prochain entraînement planifié |

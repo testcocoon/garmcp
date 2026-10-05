@@ -96,11 +96,19 @@ class GarminClient:
         except Exception as exc:
             raise GarminAuthError(f"Erreur Garmin (appareils) : {exc}") from exc
 
-    def get_body_weight(self) -> list[dict[str, Any]]:
+    def get_body_composition(self, startdate: str, enddate: str | None = None) -> dict[str, Any]:
+        """Composition corporelle (poids, IMC, masse musculaire...) entre deux dates."""
         try:
-            return self._client.get_body_weight()
+            return self._client.get_body_composition(startdate, enddate)
         except Exception as exc:
-            raise GarminAuthError(f"Erreur Garmin (poids) : {exc}") from exc
+            raise GarminAuthError(f"Erreur Garmin (composition corporelle) : {exc}") from exc
+
+    def get_body_weight_for_day(self, day: str) -> dict[str, Any]:
+        """Poids et composition corporelle pour une journée donnée."""
+        try:
+            return self._client.get_body_composition(day)
+        except Exception as exc:
+            raise GarminAuthError(f"Erreur Garmin (poids du {day}) : {exc}") from exc
 
     def get_scheduled_workouts(self, year: int, month: int) -> dict[str, Any]:
         """Entraînements planifiés pour un mois donné (calendrier Garmin)."""

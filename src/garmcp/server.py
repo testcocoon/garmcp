@@ -219,9 +219,31 @@ def garmin_stress(days_ago: int = 0) -> str:
 
 
 @mcp.tool()
-def garmin_weight() -> str:
-    """Dernières mesures de poids."""
-    return _json(get_client().get_body_weight())
+def garmin_weight(days_ago: int = 0) -> str:
+    """Dernière mesure de poids (et composition corporelle) pour une journée.
+
+    Retourne le poids, l'IMC, la masse grasse/musculaire et la date de
+    la dernière mesure du jour demandé.
+
+    Args:
+        days_ago: Nombre de jours en arrière (0 = aujourd'hui).
+    """
+    logger.debug("garmin_weight appelé (days_ago=%s)", days_ago)
+    return _json(get_client().get_body_weight_for_day(_days_ago(days_ago)))
+
+
+@mcp.tool()
+def garmin_weight_history(days: int = 7) -> str:
+    """Historique du poids sur plusieurs jours.
+
+    Args:
+        days: Nombre de jours d'historique (défaut : 7, max 365).
+    """
+    days = max(1, min(days, 365))
+    logger.debug("garmin_weight_history appelé (days=%s)", days)
+    start = _days_ago(days)
+    end = _days_ago(0)
+    return _json(get_client().get_body_composition(start, end))
 
 
 @mcp.tool()

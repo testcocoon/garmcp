@@ -40,3 +40,24 @@ def test_scheduled_workout_error_wrapped():
     client = GarminClient(FakeGarmin())
     with pytest.raises(GarminAuthError):
         client.get_scheduled_workout_by_id("404")
+
+
+class FakeBodyGarmin:
+    def get_body_composition(self, startdate, enddate=None):
+        if enddate is None:
+            return {"date": startdate, "weight": 75.3, "bmi": 22.1}
+        return {"startDate": startdate, "endDate": enddate, "totalWeight": 75.3}
+
+
+def test_body_weight_for_day():
+    client = GarminClient(FakeBodyGarmin())
+    data = client.get_body_weight_for_day("2025-10-05")
+    assert data["weight"] == 75.3
+    assert data["date"] == "2025-10-05"
+
+
+def test_body_composition_range():
+    client = GarminClient(FakeBodyGarmin())
+    data = client.get_body_composition("2025-09-28", "2025-10-05")
+    assert data["startDate"] == "2025-09-28"
+    assert data["endDate"] == "2025-10-05"
