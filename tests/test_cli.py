@@ -200,3 +200,57 @@ def test_main_sse_base_url_prefix(monkeypatch):
     garmcp_cli.main(["--sse", "--base-url", "/baseurl/"])
     assert called["sse_path"] == "/baseurl/sse"
     assert called["message_path"] == "/baseurl/messages/"
+
+
+def test_main_http_prints_url_with_base_url(monkeypatch, capsys):
+    class FakeApp:
+        def add_middleware(self, mw):
+            pass
+
+    class FakeMCP:
+        def streamable_http_app(self, **kwargs):
+            return FakeApp()
+
+    import garmcp.server as server_mod
+
+    monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    monkeypatch.setattr("uvicorn.run", lambda app, **kw: None)
+    garmcp_cli.main(["--http", "--base-url", "baseurl", "--port", "9000"])
+    captured = capsys.readouterr()
+    assert "http://127.0.0.1:9000/baseurl/mcp" in captured.err
+
+
+def test_main_http_prints_url_without_base_url(monkeypatch, capsys):
+    class FakeApp:
+        def add_middleware(self, mw):
+            pass
+
+    class FakeMCP:
+        def streamable_http_app(self, **kwargs):
+            return FakeApp()
+
+    import garmcp.server as server_mod
+
+    monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    monkeypatch.setattr("uvicorn.run", lambda app, **kw: None)
+    garmcp_cli.main(["--http", "--port", "9000"])
+    captured = capsys.readouterr()
+    assert "http://127.0.0.1:9000/mcp" in captured.err
+
+
+def test_main_sse_prints_url(monkeypatch, capsys):
+    class FakeApp:
+        def add_middleware(self, mw):
+            pass
+
+    class FakeMCP:
+        def sse_app(self, **kwargs):
+            return FakeApp()
+
+    import garmcp.server as server_mod
+
+    monkeypatch.setattr(server_mod, "mcp", FakeMCP())
+    monkeypatch.setattr("uvicorn.run", lambda app, **kw: None)
+    garmcp_cli.main(["--sse", "--base-url", "baseurl", "--port", "9000"])
+    captured = capsys.readouterr()
+    assert "http://127.0.0.1:9000/baseurl/sse" in captured.err
