@@ -162,6 +162,23 @@ def garmin_activity(activity_id: str) -> str:
     """
     return _json(get_client().get_activity(activity_id))
 
+@mcp.tool()
+def garmin_all_activities(max_activities: int | None = None) -> str:
+    """Télécharge toutes les activités en paginant (requêtes de 100).
+
+    Contrairement à garmin_activities (limité à 100), cet outil
+    interroge le service d'activités avec start=0, 100, 200, ... et
+    limit=100 jusqu'à récupérer tout l'historique du compte.
+
+    Args:
+        max_activities: Nombre maximum d'activités à télécharger
+            (None = tout l'historique).
+    """
+    logger.debug(
+        "garmin_all_activities appelé (max=%s)", max_activities or "tout"
+    )
+    return _json(get_client().get_all_activities(max_activities))
+
 
 @mcp.tool()
 def garmin_sleep(days_ago: int = 0) -> str:
