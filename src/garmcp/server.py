@@ -143,17 +143,19 @@ def garmin_daily_summary(days_ago: int = 0) -> str:
 
 
 @mcp.tool()
-def garmin_activities(limit: int = 10) -> str:
-    """Liste les dernières activités (course, vélo, natation...).
+def garmin_activities(start: int = 0, limit: int = 10) -> str:
+    """Liste les activités à partir de l'index `start` (course, vélo, natation...).
 
+    Interroge l'API Garmin avec ?start=<start>&limit=<limit>.
     Au-delà de 100 activités, la pagination est automatique
-    (requêtes successives de 100).
+    (requêtes successives de 100 depuis `start`).
 
     Args:
+        start: Index de la première activité (0 = plus récente).
         limit: Nombre maximum d'activités à retourner.
     """
-    logger.debug("garmin_activities appelé (limit=%s)", limit)
-    return _json(get_client().get_activities(limit))
+    logger.debug("garmin_activities appelé (start=%s, limit=%s)", start, limit)
+    return _json(get_client().get_activities(start, limit))
 
 
 @mcp.tool()
