@@ -146,6 +146,9 @@ def garmin_daily_summary(days_ago: int = 0) -> str:
 def garmin_activities(limit: int = 10) -> str:
     """Liste les dernières activités (course, vélo, natation...).
 
+    Au-delà de 100 activités, la pagination est automatique
+    (requêtes successives de 100).
+
     Args:
         limit: Nombre maximum d'activités à retourner.
     """
@@ -166,9 +169,9 @@ def garmin_activity(activity_id: str) -> str:
 def garmin_all_activities(max_activities: int | None = None) -> str:
     """Télécharge toutes les activités en paginant (requêtes de 100).
 
-    Contrairement à garmin_activities (limité à 100), cet outil
-    interroge le service d'activités avec start=0, 100, 200, ... et
-    limit=100 jusqu'à récupérer tout l'historique du compte.
+    Équivalent à garmin_activities avec un limit élevé, mais plus
+    explicite : interroge le service d'activités avec start=0, 100,
+    200, ... et limit=100 jusqu'à récupérer tout l'historique.
 
     Args:
         max_activities: Nombre maximum d'activités à télécharger
