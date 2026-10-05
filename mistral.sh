@@ -16,6 +16,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="${GARMCP_VENV:-$SCRIPT_DIR/.venv}"
+[ ! -e $SCRIPT_DIR/garmin_user.env ] || source $SCRIPT_DIR/garmin_user.env 
 HOST="${GARMCP_HOST:-127.0.0.1}"
 PORT="${GARMCP_PORT:-8000}"
 

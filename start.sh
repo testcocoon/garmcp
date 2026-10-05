@@ -5,6 +5,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="${GARMCP_VENV:-$SCRIPT_DIR/.venv}"
 
+[ ! -e $SCRIPT_DIR/garmin_user.env ] || source $SCRIPT_DIR/garmin_user.env 
+
 command -v python3 >/dev/null 2>&1 || {
     echo "Erreur : python3 n'est pas installé." >&2
     exit 1
@@ -40,3 +42,4 @@ fi
 # 5. Démarrage du serveur MCP (transport stdio)
 echo "Démarrage du serveur MCP garmcp (stdio) ..."
 exec garmcp
+#exec garmcp --login
