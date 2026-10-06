@@ -159,6 +159,23 @@ def garmin_activities(start: int = 0, limit: int = 10) -> str:
 
 
 @mcp.tool()
+def garmin_activities_between(start: str, end: str) -> str:
+    """Liste les activit\u00e9s compl\u00e8tes entre deux dates (incluses).
+
+    Les index de d\u00e9but et de fin dans la liste des activit\u00e9s sont
+    d\u00e9termin\u00e9s par dichotomie, puis la liste compl\u00e8te est charg\u00e9e.
+
+    Args:
+        start: Date de d\u00e9but au format ISO (YYYY-MM-DD), incluse.
+        end: Date de fin au format ISO (YYYY-MM-DD), incluse.
+    """
+    try:
+        return _json(get_client().get_activities_between(start, end))
+    except GarminAuthError as exc:
+        return f"Erreur : {exc}"
+
+
+@mcp.tool()
 def garmin_activity(activity_id: str) -> str:
     """Détails d'une activité spécifique.
 

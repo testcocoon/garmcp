@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -145,6 +145,72 @@ class GarminClient:
                 break
             start += self.PAGE_SIZE
         return activities[:total] if max_activities is not None else activities
+
+    def _activity_date_at(self, index: int, probes: dict[int, str | None]) -> str | None:
+        """Date de d\u00e9but de l'activit\u00e9 \u00e0 l'index donn\u00e9 (None si hors liste)."""
+        if index not in probes:
+            try:
+                page = self._client.get_activities(index, 1)
+            except Exception as exc:
+                raise GarminAuthError(f"Erreur Garmin (activit\u00e9s, index {index}) : {exc}") from exc
+            probes[index] = self._start_date(page[0]) if page else None
+        return probes[index]
+
+    @staticmethod
+    def _start_date(activity: dict[str, Any]) -> str:
+        raw = activity.get("startTimeLocal") or activity.get("startTimeGMT") or ""
+        return str(raw)[:10]
+
+    def _dichotomy(self, target: str, probes: dict[int, str | None]) -> int:
+        """Premier index dont la date est strictement ant\u00e9rieure \u00e0 `target`.
+
+        Les activit\u00e9s \u00e9tant tri\u00e9es de la plus r\u00e9cente \u00e0 la plus ancienne,
+        recherche exponentielle puis dichotomie sur cet index.
+        """
+        hi = 1
+        while True:
+            day = self._activity_date_at(hi, probes)
+            if day is None or day < target:
+                break
+            hi *= 2
+        lo = hi // 2
+        while lo < hi:
+            mid = (lo + hi) // 2
+            day = self._activity_date_at(mid, probes)
+            if day is None or day < target:
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo
+
+    def get_activities_between(self, start: str, end: str) -> list[dict[str, Any]]:
+        """Activit\u00e9s entre deux dates (incluses), bornes d\u00e9termin\u00e9es par dichotomie.
+
+        Args:
+            start: Date de d\u00e9but au format ISO (YYYY-MM-DD), incluse.
+            end: Date de fin au format ISO (YYYY-MM-DD), incluse.
+        """
+        if date.fromisoformat(start) > date.fromisoformat(end):
+            raise GarminAuthError("Date de d\u00e9but post\u00e9rieure \u00e0 la date de fin.")
+        probes: dict[int, str | None] = {}
+        first = self._activity_date_at(0, probes)
+        if first is None or first < start:
+            return []
+        end_exclusive = (date.fromisoformat(end) + timedelta(days=1)).isoformat()
+        begin = self._dichotomy(end_exclusive, probes)
+        stop = self._dichotomy(start, probes)
+        activities: list[dict[str, Any]] = []
+        index = begin
+        while index < stop:
+            try:
+                page = self._client.get_activities(index, 100)
+            except Exception as exc:
+                raise GarminAuthError(f"Erreur Garmin (activit\u00e9s, index {index}) : {exc}") from exc
+            if not page:
+                break
+            activities.extend(page)
+            index += len(page)
+        return [a for a in activities if start <= self._start_date(a) <= end]
 
     def get_activity(self, activity_id: str | int) -> dict[str, Any]:
         try:
