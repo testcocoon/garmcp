@@ -1,6 +1,6 @@
 # garmcp — Connecteur MCP Garmin
 
-Serveur [Model Context Protocol](https://modelcontextprotocol.io) qui permet à un assistant IA de **se connecter à un compte Garmin Connect** et d'exposer ses données : activités, sommeil, pas, fréquence cardiaque, batterie corporelle, stress, poids, appareils.
+Serveur [Model Context Protocol](https://modelcontextprotocol.io) qui permet à un assistant IA de **se connecter à un compte Garmin Connect** et d'exposer ses données : activités, sommeil, pas, fréquence cardiaque, batterie corporelle, stress, poids, profil, appareils.
 
 ## Installation
 
@@ -257,6 +257,7 @@ Connecteurs > **+ Ajouter un connecteur** > **Connecteur MCP personnalisé** :
 | `garmin_weight` | Poids et composition corporelle d'une journée (days_ago) |
 | `garmin_weight_history` | Historique du poids sur plusieurs jours (défaut 7) |
 | `garmin_devices` | Appareils enregistrés |
+| `garmin_profile` | Données du profil Garmin Connect (nom, âge, taille, poids, VO2 max...) |
 | `garmin_scheduled_workouts` | Entraînements planifiés d'un mois (calendrier) |
 | `garmin_next_scheduled_workout` | Prochain entraînement planifié |
 | `garmin_scheduled_workout` | Détails d'un entraînement planifié par ID |

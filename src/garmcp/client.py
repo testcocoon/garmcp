@@ -218,6 +218,13 @@ class GarminClient:
         except Exception as exc:
             raise GarminAuthError(f"Erreur Garmin (activité {activity_id}) : {exc}") from exc
 
+    def get_user_profile(self) -> dict[str, Any]:
+        """Données du profil Garmin Connect (nom, âge, poids, taille, VO2 max...)."""
+        try:
+            return self._client.get_user_profile()
+        except Exception as exc:
+            raise GarminAuthError(f"Erreur Garmin (profil) : {exc}") from exc
+
     def get_devices(self) -> list[dict[str, Any]]:
         try:
             return self._client.get_devices()

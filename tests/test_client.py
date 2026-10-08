@@ -6,6 +6,9 @@ from garmcp.client import GarminClient
 
 
 class FakeGarmin:
+    def get_user_profile(self):
+        return {"fullName": "Jean Dupont", "age": 42}
+
     def get_scheduled_workouts(self, year, month):
         return {"calendarItems": [{"itemType": "workout", "date": f"{year}-{month:02d}-05"}]}
 
@@ -166,3 +169,19 @@ def test_get_activities_invalid_start():
 
     with pytest.raises(GarminAuthError):
         client.get_activities(start=-1)
+
+
+def test_user_profile():
+    client = GarminClient(FakeGarmin())
+    data = client.get_user_profile()
+    assert data["fullName"] == "Jean Dupont"
+
+
+def test_user_profile_error_wrapped():
+    class Broken:
+        def get_user_profile(self):
+            raise RuntimeError("boom")
+
+    client = GarminClient(Broken())
+    with pytest.raises(GarminAuthError):
+        client.get_user_profile()

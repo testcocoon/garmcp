@@ -291,6 +291,16 @@ def garmin_devices() -> str:
     return _json(get_client().get_devices())
 
 @mcp.tool()
+def garmin_profile() -> str:
+    """Données du profil Garmin Connect de l'utilisateur connecté.
+
+    Retourne les informations du profil : nom complet, âge, taille,
+    poids, sexe, VO2 max, zones de fréquence cardiaque, objectifs, etc.
+    """
+    logger.debug("garmin_profile appelé")
+    return _json(get_client().get_user_profile())
+
+@mcp.tool()
 def garmin_scheduled_workouts(year: int, month: int) -> str:
     """Liste les entraînements planifiés pour un mois donné.
 
