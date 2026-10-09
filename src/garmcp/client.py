@@ -263,6 +263,41 @@ class GarminClient:
                 f"Erreur Garmin (prochain entraînement planifié) : {exc}"
             ) from exc
 
+    def get_adhoc_challenges(self, start: int = 0, limit: int = 100) -> dict[str, Any]:
+        """Défis adhoc (défis quotidiens/hebdomadaires) de l'utilisateur."""
+        try:
+            return self._client.get_adhoc_challenges(start, limit)
+        except Exception as exc:
+            raise GarminAuthError(f"Erreur Garmin (défis adhoc) : {exc}") from exc
+
+    def get_badge_challenges(self, start: int = 1, limit: int = 100) -> dict[str, Any]:
+        """Défis badge (terminés et en cours) de l'utilisateur."""
+        try:
+            return self._client.get_badge_challenges(start, limit)
+        except Exception as exc:
+            raise GarminAuthError(f"Erreur Garmin (défis badge) : {exc}") from exc
+
+    def get_available_badge_challenges(self, start: int = 0, limit: int = 100) -> dict[str, Any]:
+        """Défis badge disponibles (non encore rejoints)."""
+        try:
+            return self._client.get_available_badge_challenges(start, limit)
+        except Exception as exc:
+            raise GarminAuthError(f"Erreur Garmin (défis badge disponibles) : {exc}") from exc
+
+    def get_non_completed_badge_challenges(self, start: int = 1, limit: int = 100) -> dict[str, Any]:
+        """Défis badge non terminés de l'utilisateur."""
+        try:
+            return self._client.get_non_completed_badge_challenges(start, limit)
+        except Exception as exc:
+            raise GarminAuthError(f"Erreur Garmin (défis badge non terminés) : {exc}") from exc
+
+    def get_inprogress_virtual_challenges(self, start: int = 0, limit: int = 100) -> dict[str, Any]:
+        """Défis virtuels en cours (courses/marches cumulatives)."""
+        try:
+            return self._client.get_inprogress_virtual_challenges(start, limit)
+        except Exception as exc:
+            raise GarminAuthError(f"Erreur Garmin (défis virtuels en cours) : {exc}") from exc
+
     def get_scheduled_workout_by_id(self, workout_id: str | int) -> dict[str, Any]:
         """Détails d'un entraînement planifié par son identifiant."""
         try:

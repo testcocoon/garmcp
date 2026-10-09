@@ -28,6 +28,11 @@ def test_tools_registered():
         "garmin_scheduled_workouts",
         "garmin_next_scheduled_workout",
         "garmin_scheduled_workout",
+        "garmin_challenges",
+        "garmin_badge_challenges",
+        "garmin_available_badge_challenges",
+        "garmin_non_completed_badge_challenges",
+        "garmin_inprogress_virtual_challenges",
     }
     assert expected.issubset(names)
 

@@ -338,6 +338,69 @@ def garmin_scheduled_workout(workout_id: str) -> str:
     return _json(get_client().get_scheduled_workout_by_id(workout_id))
 
 
+@mcp.tool()
+def garmin_challenges(start: int = 0, limit: int = 100) -> str:
+    """Défis adhoc de l'utilisateur (défis quotidiens/hebdomadaires, statut inclus).
+
+    Args:
+        start: Index du premier défi (0 = plus récent).
+        limit: Nombre maximum de défis à retourner.
+    """
+    logger.debug("garmin_challenges appelé (start=%s, limit=%s)", start, limit)
+    return _json(get_client().get_adhoc_challenges(start, limit))
+
+
+@mcp.tool()
+def garmin_badge_challenges(start: int = 1, limit: int = 100) -> str:
+    """Défis badge de l'utilisateur, avec leur statut (terminés et en cours).
+
+    Args:
+        start: Index du premier défi (1 = plus récent).
+        limit: Nombre maximum de défis à retourner.
+    """
+    logger.debug("garmin_badge_challenges appelé (start=%s, limit=%s)", start, limit)
+    return _json(get_client().get_badge_challenges(start, limit))
+
+
+@mcp.tool()
+def garmin_available_badge_challenges(start: int = 0, limit: int = 100) -> str:
+    """Défis badge disponibles (non encore rejoints).
+
+    Args:
+        start: Index du premier défi (0 = plus récent).
+        limit: Nombre maximum de défis à retourner.
+    """
+    logger.debug("garmin_available_badge_challenges appelé (start=%s, limit=%s)", start, limit)
+    return _json(get_client().get_available_badge_challenges(start, limit))
+
+@mcp.tool()
+def garmin_non_completed_badge_challenges(start: int = 1, limit: int = 100) -> str:
+    """Défis badge non terminés de l'utilisateur (statut en cours).
+
+    Args:
+        start: Index du premier défi (1 = plus récent).
+        limit: Nombre maximum de défis à retourner.
+    """
+    logger.debug(
+        "garmin_non_completed_badge_challenges appelé (start=%s, limit=%s)", start, limit
+    )
+    return _json(get_client().get_non_completed_badge_challenges(start, limit))
+
+
+@mcp.tool()
+def garmin_inprogress_virtual_challenges(start: int = 0, limit: int = 100) -> str:
+    """Défis virtuels en cours (courses/marches cumulatives, progression incluse).
+
+    Args:
+        start: Index du premier défi (0 = plus récent).
+        limit: Nombre maximum de défis à retourner.
+    """
+    logger.debug(
+        "garmin_inprogress_virtual_challenges appelé (start=%s, limit=%s)", start, limit
+    )
+    return _json(get_client().get_inprogress_virtual_challenges(start, limit))
+
+
 def main() -> None:
     logger.debug("Démarrage du serveur MCP garmcp (log=%s)", os.environ.get("GARMCP_LOG", "stderr"))
     mcp.run()
