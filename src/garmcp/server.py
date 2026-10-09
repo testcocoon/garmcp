@@ -258,6 +258,17 @@ def garmin_stress(days_ago: int = 0) -> str:
 
 
 @mcp.tool()
+def garmin_hrv(days_ago: int = 0) -> str:
+    """Variabilit\u00e9 de la fr\u00e9quence cardiaque (HRV, baseline et statut) pour une journ\u00e9e.
+
+    logger.debug("garmin_hrv appel\u00e9 (days_ago=%s)", days_ago)
+    Args:
+        days_ago: Nombre de jours en arri\u00e8re (0 = aujourd'hui).
+    """
+    return _json(get_client().get_hrv(_days_ago(days_ago)))
+
+
+@mcp.tool()
 def garmin_weight(days_ago: int = 0) -> str:
     """Dernière mesure de poids (et composition corporelle) pour une journée.
 

@@ -185,3 +185,32 @@ def test_user_profile_error_wrapped():
     client = GarminClient(Broken())
     with pytest.raises(GarminAuthError):
         client.get_user_profile()
+
+
+class FakeHrvGarmin:
+    def get_hrv_data(self, day):
+        return {
+            "hrvTimestamp": day,
+            "hrvValue": 52.3,
+            "baseline": {"low": 45.0, "high": 60.0},
+            "status": "balanced",
+        }
+
+
+def test_get_hrv():
+    client = GarminClient(FakeHrvGarmin())
+    data = client.get_hrv("2025-10-05")
+    assert data["hrvTimestamp"] == "2025-10-05"
+    assert data["hrvValue"] == 52.3
+    assert data["baseline"]["low"] == 45.0
+    assert data["status"] == "balanced"
+
+
+def test_get_hrv_error_wrapped():
+    class Broken:
+        def get_hrv_data(self, day):
+            raise RuntimeError("boom")
+
+    client = GarminClient(Broken())
+    with pytest.raises(GarminAuthError):
+        client.get_hrv("2025-10-05")
