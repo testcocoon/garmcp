@@ -22,6 +22,7 @@ def test_tools_registered():
         "garmin_heart_rate",
         "garmin_body_battery",
         "garmin_stress",
+        "garmin_hrv",
         "garmin_weight",
         "garmin_profile",
         "garmin_devices",

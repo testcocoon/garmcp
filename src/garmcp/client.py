@@ -78,6 +78,10 @@ class GarminClient:
     def get_stress(self, day: str, cache: bool = False) -> dict[str, Any]:
         return self._get_by_date("stress", self._client.get_stress_data, day, cache)
 
+    def get_hrv(self, day: str, cache: bool = False) -> dict[str, Any]:
+        """Variabilité de la fréquence cardiaque (HRV) pour une journ\u00e9e."""
+        return self._get_by_date("hrv", self._client.get_hrv_data, day, cache)
+
     PAGE_SIZE = 100
 
     def get_activities(self, start: int = 0, limit: int = 10) -> list[dict[str, Any]]:
