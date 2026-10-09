@@ -261,6 +261,7 @@ Connecteurs > **+ Ajouter un connecteur** > **Connecteur MCP personnalisé** :
 | `garmin_scheduled_workouts` | Entraînements planifiés d'un mois (calendrier) |
 | `garmin_next_scheduled_workout` | Prochain entraînement planifié |
 | `garmin_scheduled_workout` | Détails d'un entraînement planifié par ID |
+| `garmin_create_workout` | Crée un entraînement dans la bibliothèque Garmin Connect (JSON complet) |
 | `garmin_challenges` | Défis adhoc de l'utilisateur (quotidiens/hebdomadaires) avec leur statut |
 | `garmin_badge_challenges` | Défis badge de l'utilisateur, terminés et en cours, avec leur statut |
 | `garmin_available_badge_challenges` | Défis badge disponibles (non encore rejoints) |

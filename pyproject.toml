@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
     "mcp>=1.2.0",
-    "garminconnect>=0.2.26",
+    "garminconnect>=0.3.17",
 ]
 
 [project.optional-dependencies]

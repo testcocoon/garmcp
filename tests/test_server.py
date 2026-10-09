@@ -28,6 +28,7 @@ def test_tools_registered():
         "garmin_scheduled_workouts",
         "garmin_next_scheduled_workout",
         "garmin_scheduled_workout",
+        "garmin_create_workout",
         "garmin_challenges",
         "garmin_badge_challenges",
         "garmin_available_badge_challenges",

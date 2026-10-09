@@ -9,6 +9,16 @@ class FakeGarmin:
     def get_user_profile(self):
         return {"fullName": "Jean Dupont", "age": 42}
 
+    def upload_workout(self, workout_json):
+        if isinstance(workout_json, str):
+            import json
+            payload = json.loads(workout_json)
+        else:
+            payload = workout_json
+        if payload.get("workoutName") == "boom":
+            raise RuntimeError("rejeté par Garmin")
+        return {"workoutId": 42, **payload}
+
     def get_scheduled_workouts(self, year, month):
         return {"calendarItems": [{"itemType": "workout", "date": f"{year}-{month:02d}-05"}]}
 
@@ -43,6 +53,26 @@ def test_scheduled_workout_error_wrapped():
     client = GarminClient(FakeGarmin())
     with pytest.raises(GarminAuthError):
         client.get_scheduled_workout_by_id("404")
+
+
+def test_create_workout():
+    client = GarminClient(FakeGarmin())
+    payload = {"workoutName": "Fractionné", "sportType": {"sportTypeKey": "running"}}
+    data = client.create_workout(payload)
+    assert data["workoutId"] == 42
+    assert data["workoutName"] == "Fractionné"
+
+
+def test_create_workout_from_json_string():
+    client = GarminClient(FakeGarmin())
+    data = client.create_workout('{"workoutName": "Sortie longue"}')
+    assert data["workoutName"] == "Sortie longue"
+
+
+def test_create_workout_error_wrapped():
+    client = GarminClient(FakeGarmin())
+    with pytest.raises(GarminAuthError):
+        client.create_workout({"workoutName": "boom"})
 
 
 class FakeBodyGarmin:

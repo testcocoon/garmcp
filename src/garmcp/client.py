@@ -298,6 +298,18 @@ class GarminClient:
         except Exception as exc:
             raise GarminAuthError(f"Erreur Garmin (défis virtuels en cours) : {exc}") from exc
 
+    def create_workout(self, workout_json: dict[str, Any] | list[Any] | str) -> dict[str, Any]:
+        """Crée un entraînement dans la bibliothèque Garmin Connect.
+
+        Args:
+            workout_json: Entraînement au format JSON (objet, liste ou chaîne
+                JSON), tel qu'attendu par l'API /workout-service/workout.
+        """
+        try:
+            return self._client.upload_workout(workout_json)
+        except Exception as exc:
+            raise GarminAuthError(f"Erreur Garmin (création d'entraînement) : {exc}") from exc
+
     def get_scheduled_workout_by_id(self, workout_id: str | int) -> dict[str, Any]:
         """Détails d'un entraînement planifié par son identifiant."""
         try:

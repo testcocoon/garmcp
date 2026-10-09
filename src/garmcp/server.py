@@ -339,6 +339,24 @@ def garmin_scheduled_workout(workout_id: str) -> str:
 
 
 @mcp.tool()
+def garmin_create_workout(workout_json: str) -> str:
+    """Crée un entraînement dans la bibliothèque d'entraînements Garmin Connect.
+
+    Le JSON doit décrire l'entraînement complet (nom, type de sport,
+    segments et étapes), tel qu'attendu par l'API workout de Garmin.
+
+    Args:
+        workout_json: Entraînement au format JSON (chaîne ou objet),
+            ex. {"workoutName": "Fractionné", "workoutSegments": [...]}.
+    """
+    logger.debug("garmin_create_workout appelé")
+    try:
+        return _json(get_client().create_workout(workout_json))
+    except GarminAuthError as exc:
+        return f"Erreur : {exc}"
+
+
+@mcp.tool()
 def garmin_challenges(start: int = 0, limit: int = 100) -> str:
     """Défis adhoc de l'utilisateur (défis quotidiens/hebdomadaires, statut inclus).
 
