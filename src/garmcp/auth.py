@@ -37,6 +37,10 @@ class TokenStore:
 
     def ensure_dir(self) -> None:
         self.token_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            os.chmod(self.token_dir, 0o700)
+        except OSError:
+            pass
 
 
 def _persist_tokens(client: Garmin, store: TokenStore) -> None:

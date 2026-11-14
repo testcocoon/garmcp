@@ -241,7 +241,13 @@ Connecteurs > **+ Ajouter un connecteur** > **Connecteur MCP personnalisé** :
 
 | Outil | Description |
 |---|---|
-| `garmin_login` | Se connecte au compte Garmin ; si la 2FA est active, Garmin envoie un code par email |
+| `user_create` | Crée un compte utilisateur garmcp (mot de passe haché, stocké localement) |
+| `user_login` | Authentifie un compte garmcp et retourne un token de session |
+| `user_logout` | Révoque la session utilisateur courante |
+| `user_delete` | Supprime un compte, ses sessions et ses tokens Garmin |
+| `users_list` | Liste les comptes utilisateurs garmcp |
+| `user_status` | État du compte utilisateur courant et de sa connexion Garmin |
+| `garmin_login` | Connecte l'utilisateur courant à son compte Garmin ; si la 2FA est active, Garmin envoie un code par email |
 | `garmin_mfa_verify` | Soumet le code 2FA reçu par email et termine la connexion |
 | `garmin_logout` | Se déconnecte et supprime les tokens locaux |
 | `garmin_status` | Vérifie l'état de la connexion |
@@ -287,6 +293,33 @@ Connecté au compte Garmin avec succès (MFA validée).
 ```
 
 La session 2FA en attente vit en mémoire du serveur : si le code expire ou si le serveur redémarre, relancez `garmin_login`.
+
+## Multi-utilisateur
+
+Le serveur peut gérer **plusieurs comptes utilisateurs**, chacun connecté à son propre compte Garmin :
+
+1. `user_create(username, password)` — crée un compte garmcp local. Le mot de passe est haché (PBKDF2-SHA256) dans `~/.garmcp/users.json` (permissions 0600) ; il n'est jamais stocké en clair.
+2. `user_login(username, password)` — authentifie le compte et retourne un **token de session**.
+3. `garmin_login(email, password)` — connecte l'utilisateur courant à son compte Garmin (2FA possible via `garmin_mfa_verify`). Les tokens OAuth Garmin sont stockés dans un répertoire **dédié à l'utilisateur** (`~/.garmcp/users/<username>/garmin_tokens.json`) : ils ne sont jamais mélangés à ceux des autres utilisateurs.
+4. Toutes les requêtes MCP suivantes (`garmin_daily_summary`, `garmin_activities`, ...) sont alors servies avec le compte Garmin de cet utilisateur.
+
+**Identification de l'utilisateur selon le transport :**
+
+- **HTTP/SSE** (connecteur Mistral Chat, Apache2...) : transmettez le token de session dans l'en-tête `Authorization: Bearer <token>` de chaque requête. Le middleware d'authentification accepte ce token (ou le `GARMCP_TOKEN` statique). Chaque requête est alors servie avec le compte de l'utilisateur identifié par le token.
+- **stdio** (Vibe CLI, Claude Desktop) : pas d'en-tête HTTP, le dernier `user_login` réussi définit l'**utilisateur actif** du processus.
+
+Sans compte utilisateur créé, le serveur garde son comportement historique à compte unique (`GARMIN_EMAIL`/`GARMIN_PASSWORD` ou `~/.garmcp/garmin_tokens.json`) : aucun changement de configuration n'est nécessaire.
+
+**Sécurité** : si le serveur HTTP est exposé, définissez `GARMCP_TOKEN` (secret statique, sert de bootstrap pour appeler `user_create`/`user_login`) ; ensuite chaque utilisateur s'authentifie avec son propre token de session. Sans `GARMCP_TOKEN`, le serveur reste ouvert (usage local uniquement).
+
+Autres outils de gestion : `user_logout` (révoque la session courante), `user_delete(username, password)` (supprime le compte, ses sessions et ses tokens Garmin), `users_list`, `user_status`.
+
+Les sessions persistent dans `users.json` : elles survivent au redémarrage du serveur.
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `GARMCP_USERS_FILE` | `<GARMCP_TOKEN_DIR ou ~/.garmcp>/users.json` | Fichier des comptes et sessions |
+| `GARMCP_USERS_DIR` | `<GARMCP_TOKEN_DIR ou ~/.garmcp>/users` | Répertoire des tokens Garmin par utilisateur |
 
 ## Développement
 
