@@ -1,35 +1,107 @@
-"""Serveur MCP exposant les outils de connexion et données Garmin Connect."""
+"""Serveur MCP exposant les outils de connexion et données Garmin Connect.
+
+Support multi-utilisateur : des comptes garmcp locaux (outils user_*) sont
+connectés chacun à un compte Garmin (garmin_login / garmin_mfa_verify) ;
+les requêtes MCP sont alors servies avec le compte Garmin de l'utilisateur
+courant. En transport HTTP, l'utilisateur est identifié par le bearer token
+de session (Authorization: Bearer <token de user_login>) ; en stdio, par
+l'utilisateur actif (dernier user_login réussi). Sans compte utilisateur,
+le serveur retombe sur le mode historique à compte unique
+(GARMIN_EMAIL/GARMIN_PASSWORD ou ~/.garmcp/garmin_tokens.json).
+"""
 
 from __future__ import annotations
 
 import json
 import os
+from contextvars import ContextVar
 from datetime import date, timedelta
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
-from .auth import GarminAuthError, login, login_mfa_step2, logout
+from .auth import GarminAuthError, TokenStore, login, login_mfa_step2, logout
 from .client import GarminClient
 from .logging import get_logger
+from .users import UserError, UserStore
 
 mcp = MCPServer(name="garmcp", description="Connecteur Garmin Connect")
 
 logger = get_logger(__name__)
 
+user_store = UserStore()
+
 _client: GarminClient | None = None
+_clients: dict[str, GarminClient] = {}
+_active_user: str | None = None
 
 # Sessions MFA en attente : étape 1 terminée, en attente du code.
-# L'état MFA vit sur l'instance Garmin (en mémoire du processus serveur).
-_mfa_sessions: dict[str, Any] = {}
+# Une sous-dict par utilisateur (clé = nom d'utilisateur, "" = compte unique
+# historique) ; l'état MFA vit sur l'instance Garmin (mémoire du processus).
+_mfa_sessions: dict[str, dict[str, Any]] = {}
+
+# Contexte de la requête en cours : (bearer token, utilisateur) résolu depuis
+# les en-têtes HTTP, renseigné par le middleware ci-dessous. En stdio, aucun
+# en-tête : le middleware laisse None et on retombe sur _active_user.
+_current_session_var: ContextVar[tuple[str | None, str | None] | None] = ContextVar(
+    "garmcp_current_session", default=None
+)
+_http_request_var: ContextVar[bool] = ContextVar("garmcp_http_request", default=False)
+
+
+async def _user_context_middleware(ctx: Any, call_next: Any) -> Any:
+    """Résout l'utilisateur courant depuis le bearer token de la requête HTTP."""
+    request = getattr(ctx, "request", None)
+    headers = getattr(request, "headers", None)
+    is_http = headers is not None
+    token = None
+    if is_http:
+        auth_header = headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+    username = user_store.resolve_session(token) if token else None
+    reset_session = _current_session_var.set((token, username) if is_http else None)
+    reset_http = _http_request_var.set(is_http)
+    try:
+        return await call_next(ctx)
+    finally:
+        _current_session_var.reset(reset_session)
+        _http_request_var.reset(reset_http)
+
+
+mcp.middleware.append(_user_context_middleware)
+
+
+def _resolve_user() -> str | None:
+    """Utilisateur garmcp courant : session HTTP (bearer token) puis actif stdio."""
+    session = _current_session_var.get()
+    if session is not None and session[1] is not None:
+        return session[1]
+    return _active_user
+
+
+def _token_store_for(user: str | None) -> TokenStore:
+    if user is None:
+        return TokenStore()
+    return user_store.token_store_for(user)
+
+
+def _get_client_for(user: str | None) -> GarminClient:
+    global _client
+    if user is None:
+        if _client is None:
+            _client = GarminClient(login())
+        return _client
+    client = _clients.get(user)
+    if client is None:
+        client = GarminClient(login(token_store=user_store.token_store_for(user)))
+        _clients[user] = client
+    return client
 
 
 def get_client() -> GarminClient:
-    """Retourne le client Garmin connecté (connexion paresseuse)."""
-    global _client
-    if _client is None:
-        _client = GarminClient(login())
-    return _client
+    """Retourne le client Garmin de l'utilisateur courant (connexion paresseuse)."""
+    return _get_client_for(_resolve_user())
 
 
 def _json(data: Any) -> str:
@@ -48,11 +120,131 @@ def _days_ago(days: int) -> str:
 
 
 @mcp.tool()
-def garmin_login(email: str | None = None, password: str | None = None) -> str:
-    """Se connecte au compte Garmin Connect.
+def user_create(username: str, password: str) -> str:
+    """Crée un compte utilisateur garmcp (stocké localement, mot de passe haché).
 
-    Sans arguments, utilise GARMIN_EMAIL/GARMIN_PASSWORD ou les tokens
-    sauvegardés. Si le compte est protégé par la 2FA, Garmin envoie un
+    Connectez ensuite ce compte à son compte Garmin avec garmin_login, puis
+    authentifiez-vous avec user_login pour servir les requêtes MCP de cet
+    utilisateur.
+
+    Args:
+        username: Nom d'utilisateur (1-64 caractères : lettres, chiffres, '.', '-', '_').
+        password: Mot de passe du compte garmcp (minimum 8 caractères).
+    """
+    try:
+        user_store.create(username, password)
+    except UserError as exc:
+        logger.debug("user_create a échoué : %s", exc)
+        return f"Échec de création : {exc}"
+    logger.debug("user_create : compte %s créé", username)
+    return (
+        f"Compte '{username}' créé. Connectez-le à Garmin avec "
+        "garmin_login(email, password), puis authentifiez-vous avec "
+        "user_login(username, password)."
+    )
+
+
+@mcp.tool()
+def user_login(username: str, password: str) -> str:
+    """Authentifie un compte utilisateur garmcp et retourne un token de session.
+
+    En transport HTTP, transmettez ce token dans l'en-tête
+    « Authorization: Bearer <token> » : les requêtes suivantes seront servies
+    avec le compte Garmin de cet utilisateur. En stdio, ce compte devient
+    l'utilisateur actif.
+
+    Args:
+        username: Nom d'utilisateur du compte garmcp.
+        password: Mot de passe du compte garmcp.
+    """
+    global _active_user
+    if not user_store.verify(username, password):
+        logger.debug("user_login a échoué pour %s", username)
+        return "Échec : nom d'utilisateur ou mot de passe invalide."
+    token = user_store.create_session(username)
+    if not _http_request_var.get():
+        _active_user = username
+    logger.debug("user_login : session créée pour %s", username)
+    return (
+        f"Connecté en tant que '{username}'. Token de session : {token}\n"
+        "En transport HTTP, envoyez ce token dans l'en-tête "
+        "« Authorization: Bearer <token> » ; en stdio, ce compte est désormais "
+        "l'utilisateur actif. Connectez son compte Garmin avec "
+        "garmin_login(email, password) si ce n'est pas déjà fait."
+    )
+
+
+@mcp.tool()
+def user_logout() -> str:
+    """Révoque la session utilisateur courante (compte garmcp, pas Garmin)."""
+    global _active_user
+    session = _current_session_var.get()
+    if session is not None and session[0]:
+        user_store.revoke_session(session[0])
+        logger.debug("user_logout : session HTTP révoquée pour %s", session[1])
+        return f"Session révoquée (utilisateur '{session[1]}')."
+    if _active_user is not None:
+        user = _active_user
+        user_store.revoke_user_sessions(user)
+        _clients.pop(user, None)
+        _active_user = None
+        logger.debug("user_logout : utilisateur actif %s déconnecté", user)
+        return f"Déconnecté (utilisateur '{user}'), sessions révoquées."
+    return "Aucune session active."
+
+
+@mcp.tool()
+def user_delete(username: str, password: str) -> str:
+    """Supprime un compte utilisateur, ses sessions et ses tokens Garmin.
+
+    Args:
+        username: Nom d'utilisateur du compte à supprimer.
+        password: Mot de passe du compte (vérifié avant suppression).
+    """
+    global _active_user
+    if not user_store.verify(username, password):
+        return "Échec : nom d'utilisateur ou mot de passe invalide."
+    try:
+        user_store.delete(username)
+    except UserError as exc:
+        return f"Échec : {exc}"
+    _clients.pop(username, None)
+    _mfa_sessions.pop(username, None)
+    if _active_user == username:
+        _active_user = None
+    logger.debug("user_delete : compte %s supprimé", username)
+    return f"Compte '{username}' supprimé (sessions et tokens Garmin inclus)."
+
+
+@mcp.tool()
+def users_list() -> str:
+    """Liste les noms des comptes utilisateurs garmcp existants."""
+    return _json(user_store.list_users())
+
+
+@mcp.tool()
+def user_status() -> str:
+    """État du compte utilisateur courant et de sa connexion Garmin."""
+    user = _resolve_user()
+    if user is None:
+        return _json({"user": None, "garmin_connected": TokenStore().exists()})
+    return _json(
+        {
+            "user": user,
+            "garmin_connected": user_store.garmin_connected(user),
+            "sessions": user_store.session_count(user),
+        }
+    )
+
+
+@mcp.tool()
+def garmin_login(email: str | None = None, password: str | None = None) -> str:
+    """Connecte l'utilisateur courant à son compte Garmin Connect.
+
+    Les tokens sont stockés dans le répertoire dédié à l'utilisateur courant
+    (compte garmcp), ou dans ~/.garmcp/garmin_tokens.json en mode compte
+    unique. Sans arguments, utilise GARMIN_EMAIL/GARMIN_PASSWORD ou les
+    tokens sauvegardés. Si le compte est protégé par la 2FA, Garmin envoie un
     code par email : l'outil retourne alors un session_id et le code
     reçu doit être soumis via garmin_mfa_verify pour terminer la connexion.
 
@@ -61,9 +253,14 @@ def garmin_login(email: str | None = None, password: str | None = None) -> str:
         password: Mot de passe du compte Garmin (optionnel si env var définie).
     """
     global _client
-    logger.debug("garmin_login appelé (email fourni : %s)", bool(email))
+    user = _resolve_user()
+    store = _token_store_for(user)
+    sessions = _mfa_sessions.setdefault(user or "", {})
+    logger.debug(
+        "garmin_login appelé (email fourni : %s, utilisateur : %s)", bool(email), user
+    )
     try:
-        result = login(email, password, mfa_sessions=_mfa_sessions)
+        result = login(email, password, token_store=store, mfa_sessions=sessions)
     except GarminAuthError as exc:
         logger.debug("garmin_login a échoué : %s", exc)
         return f"Échec de connexion : {exc}"
@@ -79,9 +276,13 @@ def garmin_login(email: str | None = None, password: str | None = None) -> str:
         client.get_summary(date.today().isoformat())
     except GarminAuthError as exc:
         return f"Échec de connexion : {exc}"
-    _client = client
-    logger.debug("garmin_login : connexion établie")
-    return "Connecté au compte Garmin avec succès."
+    if user is not None:
+        _clients[user] = client
+    else:
+        _client = client
+    logger.debug("garmin_login : connexion établie (utilisateur : %s)", user)
+    suffix = f" (utilisateur '{user}')" if user else ""
+    return f"Connecté au compte Garmin avec succès{suffix}."
 
 
 @mcp.tool()
@@ -93,22 +294,39 @@ def garmin_mfa_verify(session_id: str, mfa_code: str) -> str:
         mfa_code: Code à 6 chiffres reçu par email.
     """
     global _client
-    logger.debug("garmin_mfa_verify appelé pour session %s", session_id[:8])
+    user = _resolve_user()
+    store = _token_store_for(user)
+    sessions = _mfa_sessions.get(user or "", {})
+    logger.debug(
+        "garmin_mfa_verify appelé pour session %s (utilisateur : %s)",
+        session_id[:8],
+        user,
+    )
     try:
-        client = login_mfa_step2(session_id, mfa_code, _mfa_sessions)
+        client = login_mfa_step2(session_id, mfa_code, sessions, token_store=store)
         wrapper = GarminClient(client)
         wrapper.get_summary(date.today().isoformat())
     except GarminAuthError as exc:
         logger.debug("garmin_mfa_verify a échoué : %s", exc)
         return f"Échec : {exc}"
-    _client = wrapper
-    return "Connecté au compte Garmin avec succès (MFA validée)."
+    if user is not None:
+        _clients[user] = wrapper
+    else:
+        _client = wrapper
+    suffix = f" (utilisateur '{user}')" if user else ""
+    return f"Connecté au compte Garmin avec succès (MFA validée){suffix}."
 
 
 @mcp.tool()
 def garmin_logout() -> str:
-    """Se déconnecte et supprime les tokens sauvegardés."""
+    """Se déconnecte de Garmin et supprime les tokens de l'utilisateur courant."""
     global _client
+    user = _resolve_user()
+    if user is not None:
+        _clients.pop(user, None)
+        logout(token_store=user_store.token_store_for(user))
+        logger.debug("garmin_logout : tokens supprimés pour %s", user)
+        return f"Déconnecté de Garmin (utilisateur '{user}'), tokens supprimés."
     _client = None
     logout()
     logger.debug("garmin_logout : tokens supprimés")
@@ -117,17 +335,17 @@ def garmin_logout() -> str:
 
 @mcp.tool()
 def garmin_status() -> str:
-    """Vérifie l'état de la connexion au compte Garmin."""
-    if _client is None:
-        try:
-            get_client()
-        except GarminAuthError as exc:
-            return f"Non connecté : {exc}"
+    """Vérifie l'état de la connexion Garmin de l'utilisateur courant."""
+    user = _resolve_user()
     try:
         summary = get_client().get_summary(date.today().isoformat())
         full_name = summary.get("fullName", "inconnu")
+        if user is not None:
+            return f"Connecté en tant que {full_name} (compte garmcp '{user}')."
         return f"Connecté en tant que {full_name}."
     except GarminAuthError as exc:
+        if user is not None:
+            return f"Non connecté (utilisateur '{user}') : {exc}"
         return f"Session invalide : {exc}"
 
 
